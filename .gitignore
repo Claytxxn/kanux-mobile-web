@@ -52,6 +52,7 @@ target/
 # =========================
 # Environment Variables
 # =========================
+.env
 .env*
 .env.*
 .env.local
@@ -107,3 +108,4 @@ android-sdk/
 .pnp.*
 .yarn/cache/
 .nyc_output
+web/supabase/.temp/

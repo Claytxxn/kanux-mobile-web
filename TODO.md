@@ -1,8 +1,8 @@
-## Step 6: Fix other controllers (ProfileController, TicketController)
+# TODO: Configure .env with DB/Backend secrets
 
-## Step 7: Run mvn clean compile && check workspace problems
-
-## Step 8: Run mvn spring-boot:run
-
-## Step 9: Mark complete
-
+## Steps:
+- [x] 1. Create .env file with all extracted secrets
+- [x] 2. Edit backend/src/main/resources/application.yml to use env vars instead of hardcoded values
+- [x] 3. Update .gitignore to ignore .env
+- [x] 4. Test configurations (restart services, verify connections)
+- [x] 5. Complete task
