@@ -1,0 +1,619 @@
+@import "tailwindcss";
+
+/* =====================================================
+   KANUX - Design Moderno Profissional v3
+   Tema: Cyan/Magenta/Roxo sem gradientes de texto
+   Layout proporcional para desktop
+   ===================================================== */
+
+:root {
+  /* Cores Principais */
+  --color-primary: #00D9FF;      /* Cyan */
+  --color-primary-dark: #00B8D4;
+  --color-primary-light: #5EEAFF;
+  
+  --color-secondary: #FF006E;    /* Magenta */
+  --color-secondary-dark: #D6005C;
+  
+  --color-accent: #8338EC;       /* Roxo */
+  --color-accent-hover: #6B21A8;
+  
+  --color-highlight: #FFBE0B;    /* Dourado */
+  --color-highlight-dark: #F59E0B;
+  
+  /* Backgrounds */
+  --color-bg-dark: #0A0A0F;
+  --color-bg-darker: #050508;
+  --color-bg-card: #12121A;
+  --color-bg-elevated: #1A1A25;
+  
+  /* Texto */
+  --color-text: #FAFAFA;
+  --color-text-secondary: #A1A1AA;
+  --color-text-muted: #71717A;
+  
+  /* Status */
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+  
+  /* Efeitos */
+  --glass-bg: rgba(18, 18, 26, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  
+  /* Bordas */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+}
+
+*, ::before, ::after { 
+  border-color: var(--glass-border); 
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--color-bg-dark);
+  color: var(--color-text);
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  font-size: 16px;
+  min-height: 100vh;
+}
+
+/* =====================================================
+   LAYOUT - Proporcional para desktop
+   ===================================================== */
+.container-wide {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  width: 100%;
+}
+
+.container-full {
+  max-width: 100%;
+  padding: 0 2rem;
+}
+
+/* =====================================================
+   TIPOGRAFIA - Sem gradientes de arco-íris
+   ===================================================== */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--color-text);
+}
+
+h1 { font-size: 2.25rem; }
+h2 { font-size: 1.875rem; }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; }
+
+p { color: var(--color-text-secondary); }
+
+a { 
+  color: var(--color-primary); 
+  text-decoration: none; 
+  transition: all 0.2s; 
+}
+a:hover { 
+  color: var(--color-primary-light); 
+}
+
+/* Títulos com cor sólida, não gradiente */
+.title-primary { color: var(--color-primary); }
+.title-secondary { color: var(--color-secondary); }
+.title-accent { color: var(--color-accent); }
+.title-highlight { color: var(--color-highlight); }
+
+/* =====================================================
+   BOTÕES
+   ===================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-bg-dark);
+  box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+}
+.btn-primary:hover {
+  background: var(--color-primary-light);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 217, 255, 0.4);
+}
+
+.btn-secondary {
+  background: var(--color-secondary);
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 0, 110, 0.3);
+}
+.btn-secondary:hover {
+  background: #FF4D9E;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 0, 110, 0.4);
+}
+
+.btn-accent {
+  background: var(--color-accent);
+  color: white;
+  box-shadow: 0 4px 15px rgba(131, 56, 236, 0.3);
+}
+.btn-accent:hover {
+  background: var(--color-accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(131, 56, 236, 0.4);
+}
+
+.btn-ghost { 
+  background: transparent; 
+  color: var(--color-text-secondary);
+  border: 1px solid var(--glass-border);
+}
+.btn-ghost:hover { 
+  background: rgba(0, 217, 255, 0.1); 
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.btn-danger {
+  background: var(--color-error);
+  color: white;
+}
+.btn-danger:hover {
+  background: #F87171;
+  transform: translateY(-2px);
+}
+
+/* =====================================================
+   INPUTS
+   ===================================================== */
+.input, input, select, textarea {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
+  border: 1px solid var(--glass-border);
+  color: var(--color-text);
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+.input:focus, input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.15);
+}
+
+/* =====================================================
+   CARDS - Modernos sem exageros
+   ===================================================== */
+.card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+.card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0, 217, 255, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.card-header { 
+  padding: 1.5rem; 
+  border-bottom: 1px solid var(--glass-border); 
+}
+.card-body { 
+  padding: 1.5rem; 
+}
+
+/* =====================================================
+   BADGES
+   ===================================================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-success { 
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--color-success);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+.badge-warning { 
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.badge-error { 
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-error);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.badge-info { 
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--color-info);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.badge-primary {
+  background: var(--color-primary);
+  color: var(--color-bg-dark);
+}
+.badge-secondary {
+  background: var(--color-secondary);
+  color: white;
+}
+
+/* =====================================================
+   TABELAS
+   ===================================================== */
+.table-container {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+}
+
+.table { 
+  width: 100%; 
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9375rem; 
+}
+
+.table thead tr { 
+  background: var(--color-bg-card);
+}
+
+.table th {
+  text-align: left;
+  padding: 1rem 1.25rem;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.table td { 
+  padding: 1rem 1.25rem; 
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--color-text-secondary);
+}
+
+.table tbody tr:hover { 
+  background: rgba(0, 217, 255, 0.03);
+}
+
+/* =====================================================
+   HERO - Limpo e profissional
+   ===================================================== */
+.hero {
+  background: linear-gradient(135deg, var(--color-bg-card) 0%, var(--color-bg-elevated) 100%);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem;
+  border: 1px solid var(--glass-border);
+}
+
+.hero-content {
+  max-width: 800px;
+}
+
+/* =====================================================
+   CHAT
+   ===================================================== */
+.chat-window {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+}
+
+.chat-bubble {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-lg);
+  max-width: 70%;
+}
+
+.chat-bubble.me {
+  background: var(--color-primary);
+  color: var(--color-bg-dark);
+  align-self: flex-end;
+}
+
+.chat-bubble.other {
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  align-self: flex-start;
+}
+
+/* =====================================================
+   ANIMAÇÕES
+   ===================================================== */
+@keyframes fade-in { 
+  from { opacity: 0; } 
+  to { opacity: 1; } 
+}
+@keyframes slide-up { 
+  from { opacity: 0; transform: translateY(10px); } 
+  to { opacity: 1; transform: translateY(0); } 
+}
+@keyframes spin { 
+  to { transform: rotate(360deg); } 
+}
+
+.animate-fade-in { animation: fade-in 0.3s ease-out; }
+.animate-slide-up { animation: slide-up 0.4s ease-out; }
+
+/* =====================================================
+   SCROLLBAR
+   ===================================================== */
+::-webkit-scrollbar { 
+  width: 8px; 
+  height: 8px; 
+}
+::-webkit-scrollbar-track { 
+  background: var(--color-bg-dark);
+}
+::-webkit-scrollbar-thumb { 
+  background: var(--color-dark-4);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { 
+  background: var(--color-primary);
+}
+
+/* =====================================================
+   SIDEBAR
+   ===================================================== */
+.sidebar {
+  background: var(--color-bg-card);
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 280px;
+  padding: 1.5rem;
+  overflow-y: auto;
+  z-index: 30;
+  border-right: 1px solid var(--glass-border);
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  transition: all 0.2s;
+  margin: 4px 0;
+}
+
+.sidebar-link:hover { 
+  background: rgba(0, 217, 255, 0.1);
+  color: var(--color-primary);
+}
+
+.sidebar-link.active { 
+  background: rgba(0, 217, 255, 0.15);
+  color: var(--color-primary);
+}
+
+/* =====================================================
+   HEADER
+   ===================================================== */
+.header {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 1rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+/* =====================================================
+   TABS
+   ===================================================== */
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  background: var(--color-bg-card);
+  padding: 0.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+}
+
+.tab {
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab:hover { 
+  color: var(--color-text); 
+  background: rgba(0, 217, 255, 0.1);
+}
+
+.tab.active { 
+  background: var(--color-primary);
+  color: var(--color-bg-dark);
+}
+
+/* =====================================================
+   MODAL
+   ===================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.9);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid var(--glass-border);
+}
+
+/* =====================================================
+   AVATAR
+   ===================================================== */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-bg-dark);
+  font-weight: 700;
+}
+
+.avatar-sm { width: 32px; height: 32px; font-size: 0.875rem; }
+.avatar-md { width: 40px; height: 40px; font-size: 1rem; }
+.avatar-lg { width: 48px; height: 48px; font-size: 1.25rem; }
+
+/* =====================================================
+   SPINNER
+   ===================================================== */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-bg-elevated);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* =====================================================
+   ESTATÍSTICAS
+   ===================================================== */
+.stat-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0, 217, 255, 0.2);
+}
+
+.stat-value {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* =====================================================
+   TAGS DE STATUS
+   ===================================================== */
+.tag-resolved {
+  background: var(--color-success);
+  color: white;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+}
+
+.tag-in-progress {
+  background: var(--color-warning);
+  color: white;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+}
+
+.tag-pending {
+  background: var(--color-error);
+  color: white;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+}
+
+/* =====================================================
+   RESPONSIVO
+   ===================================================== */
+@media (max-width: 1024px) {
+  .container-wide {
+    padding: 0 1.5rem;
+  }
+  .sidebar {
+    width: 240px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container-wide {
+    padding: 0 1rem;
+  }
+  .sidebar { 
+    transform: translateX(-100%); 
+    transition: transform 0.3s ease; 
+  }
+  .sidebar.open { 
+    transform: translateX(0); 
+  }
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.5rem; }
+}

@@ -1,0 +1,35 @@
+const API_BASE = 'http://localhost:8080/api';
+
+export async function apiFetch(endpoint: string, options: RequestInit = {}) {
+  const url = `${API_BASE}${endpoint}`;
+  const response = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    ...options,
+  });
+  
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+export const api = {
+  auth: {
+    login: (data: { email: string; password: string }) => apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  },
+  companies: {
+    list: () => apiFetch('/companies'),
+    create: (data: any) => apiFetch('/companies', { method: 'POST', body: JSON.stringify(data) }),
+  },
+  tickets: {
+    list: (params?: { companyId?: number }) => {
+      const query = new URLSearchParams(params as any).toString();
+      return apiFetch(`/tickets?${query}`);
+    },
+    get: (id: number) => apiFetch(`/tickets?ticketId=${id}`),
+  },
+};

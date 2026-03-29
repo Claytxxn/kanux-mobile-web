@@ -1,0 +1,37 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: kanux-backend
+  datasource:
+    url: jdbc:postgresql://aws-0-us-west-1.pooler.supabase.com:6543/postgres
+    username: postgres.jeffersondiogo-12s-project
+    password: "H,&yjfy4!Rc#HUy"
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 20000
+      maximum-pool-size: 5
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        "[format_sql]": true
+        "[default_schema]": public
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+logging:
+  level:
+    "[com.kanux]": DEBUG
+    "[org.springframework.security]": INFO
+    "[org.hibernate.SQL]": DEBUG
+
+supabase:
+  jwt-secret: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplamZlcnNvbmRpb2dvMTJzLXByb2plY3QiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcyODU2MjM1NiwiZXhwIjoxNzQ0MTM4MzU2fQ.dQw4w9WgXcQ"
+  # change to your Supabase JWT secret
