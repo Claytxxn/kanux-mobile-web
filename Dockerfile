@@ -18,7 +18,7 @@ WORKDIR /app
 COPY --from=builder /app/target/kanux-backend.jar /app/kanux-backend.jar
 
 # Expor a porta que sua aplicação usa
-EXPOSE 8080
+EXPOSE 10000
 
 # Comando para iniciar a aplicação
 CMD ["java", "-jar", "kanux-backend.jar"]
