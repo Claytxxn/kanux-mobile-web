@@ -1,9 +1,24 @@
-FROM maven:3.9.9-eclipse-temurin-21
-
+# ---- Estágio de build ----
+FROM maven:3.9.9-eclipse-temurin-21 AS builder
 WORKDIR /app
 
-COPY backend /app
+# Copiar apenas o pom.xml para baixar dependências (cache)
+COPY backend/pom.xml .
+RUN mvn dependency:go-offline
 
+# Copiar o código fonte e compilar
+COPY backend/src ./src
 RUN mvn clean package -DskipTests
 
-CMD ["java", "-jar", "target/kanux-backend-0.0.1.jar"]
+# ---- Estágio de execução ----
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+
+# Copiar o JAR gerado do estágio anterior
+COPY --from=builder /app/target/kanux-backend.jar /app/kanux-backend.jar
+
+# Expor a porta que sua aplicação usa (ajuste se necessário)
+EXPOSE 8080
+
+# Comando para iniciar a aplicação
+CMD ["java", "-jar", "kanux-backend.jar"]
