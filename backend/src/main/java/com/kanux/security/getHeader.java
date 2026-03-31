@@ -1,11 +1,4 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
-
 package com.kanux.security;
 
-
-class getHeader {
-
-}
+// Arquivo gerado pelo IDE (NetBeans) sem nenhum conteúdo útil.
+// Pode ser deletado. Mantido apenas para histórico do git.

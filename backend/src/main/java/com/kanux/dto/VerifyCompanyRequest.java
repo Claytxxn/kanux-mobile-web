@@ -1,10 +1,10 @@
 package com.kanux.dto;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
 public class VerifyCompanyRequest {
     private String slug;
-
-    public VerifyCompanyRequest() {}
-
-    public String getSlug() { return slug; }
-    public void setSlug(String slug) { this.slug = slug; }
 }

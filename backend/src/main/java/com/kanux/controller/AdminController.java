@@ -71,8 +71,8 @@ public class AdminController {
     public ResponseEntity<ApiResponse<CompanyMember>> addMember(
             @AuthenticationPrincipal UserProfile p, @RequestBody AddMemberRequest req) {
         if (!isSuperAdmin(p)) return forbidden();
-        UUID companyId = UUID.fromString(req.getCompany_id());
-        UUID upId = UUID.fromString(req.getUser_profile_id());
+        UUID companyId = UUID.fromString(req.getCompanyId());
+        UUID upId = UUID.fromString(req.getUserProfileId());
         if (memberRepository.existsByCompanyIdAndUserProfileId(companyId, upId))
             return ResponseEntity.badRequest().body(ApiResponse.fail("Membro já existe"));
         CompanyMember m = new CompanyMember();
@@ -110,10 +110,10 @@ public class AdminController {
             UserProfile up = new UserProfile();
             up.setAuthUserId(UUID.randomUUID());
             up.setEmail(req.getEmail());
-            up.setDisplayName(req.getDisplay_name());
+            up.setDisplayName(req.getDisplayName());
             return userProfileRepository.save(up);
         });
-        UUID companyId = UUID.fromString(req.getCompany_id());
+        UUID companyId = UUID.fromString(req.getCompanyId());
         if (!memberRepository.existsByCompanyIdAndUserProfileId(companyId, invited.getId())) {
             CompanyMember cm = new CompanyMember();
             cm.setCompanyId(companyId);

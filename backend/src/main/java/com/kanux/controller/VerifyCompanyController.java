@@ -1,21 +1,7 @@
 package com.kanux.controller;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import java.util.HashMap;
-import java.util.Map;
-
-@RestController
-@RequestMapping("/api")
-public class VerifyCompanyController {
-
-    @PostMapping("/verify-company")
-    public ResponseEntity<Map<String, Object>> verify(@RequestBody Map<String, Object> body) {
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("success", true);
-        resp.put("company", body.get("slug"));
-        resp.put("exists", true);
-        return ResponseEntity.ok(resp);
-    }
-}
-
+// Este arquivo foi esvaziado intencionalmente.
+// O endpoint POST /api/verify-company está implementado corretamente
+// em AuthController.java com consulta ao banco de dados via CompanyRepository.
+// Manter dois controllers mapeando a mesma rota causa AmbiguousHandlerMappingException
+// na inicialização do Spring Boot.
