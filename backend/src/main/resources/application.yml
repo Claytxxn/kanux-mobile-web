@@ -38,4 +38,4 @@ logging:
     "[org.hibernate.SQL]": DEBUG
 
 supabase:
-  jwt-secret: ${SUPABASE_JWT_SECRET}
+  jwt-secret: ${SUPABASE_JWT_SECRET:${JWT_SECRET}}
