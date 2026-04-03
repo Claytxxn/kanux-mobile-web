@@ -13,18 +13,19 @@ spring:
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 20000
-      maximum-pool-size: 5
+      maximum-pool-size: 2
+      minimum-idle: 1
       keepalive-time: 30000
       connection-test-query: SELECT 1
 
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: true
+    show-sql: false
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     properties:
       hibernate:
-        "[format_sql]": true
+        "[format_sql]": false
         "[default_schema]": public
 
   flyway:
@@ -37,9 +38,9 @@ spring:
 
 logging:
   level:
-    "[com.kanux]": DEBUG
-    "[org.springframework.security]": INFO
-    "[org.hibernate.SQL]": DEBUG
+    "[com.kanux]": INFO
+    "[org.springframework.security]": WARN
+    "[org.hibernate.SQL]": WARN
 
 supabase:
   jwt-secret: ${SUPABASE_JWT_SECRET}
