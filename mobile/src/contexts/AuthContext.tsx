@@ -1,10 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 // @ts-ignore
 import NetInfo from '@react-native-community/netinfo';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, getUserProfile, getUserCompanies, Profile } from '../lib/supabase';
 import { saveUserCompany } from '../lib/offlineStorage';
-import { setAuthToken } from '../lib/api'; // ← CORREÇÃO: sincroniza o token com o backend Java
+import { setAuthToken, initApi } from '../lib/api';
 
 interface AuthContextType {
   session: Session | null;
@@ -24,28 +24,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile]   = useState<Profile | null>(null);
   const [loading, setLoading]   = useState(true);
   const [isOnline, setIsOnline] = useState(true);
+  const retryTimer = useRef<any>(null);
 
-  const refreshProfile = async () => {
-    if (!user) { setProfile(null); return; }
-    const profileData = await getUserProfile(user.id);
-    setProfile(profileData);
+  /** Load profile from backend; retries every 8s if backend returns nothing (e.g. 403 during deploy). */
+  const loadProfile = async (sessionUser: User, attempt = 0) => {
+    const profileData = await getUserProfile(sessionUser.id);
     if (profileData) {
-      const companies = await getUserCompanies();
-      if (companies.length > 0) {
-        await saveUserCompany(companies[0].id);
-      }
+      setProfile(profileData);
+      try {
+        const companies = await getUserCompanies();
+        if (companies.length > 0) await saveUserCompany(companies[0].id);
+      } catch { /* non-fatal */ }
+    } else if (attempt < 5) {
+      // Backend might still be deploying — retry with backoff
+      const delay = Math.min((attempt + 1) * 8000, 30000);
+      console.warn(`⚠️ Profile unavailable, retry in ${delay / 1000}s (attempt ${attempt + 1}/5)`);
+      retryTimer.current = setTimeout(() => loadProfile(sessionUser, attempt + 1), delay);
     }
   };
 
+  const refreshProfile = async () => {
+    if (!user) { setProfile(null); return; }
+    await loadProfile(user);
+  };
+
   const signOut = async () => {
+    if (retryTimer.current) clearTimeout(retryTimer.current);
     await supabase.auth.signOut();
-    setAuthToken(null); // ← limpa o token no backend Java também
+    setAuthToken(null);
     setSession(null);
     setUser(null);
     setProfile(null);
   };
 
   useEffect(() => {
+    // Kick off API URL detection early
+    initApi().catch(() => {});
+
     const unsubscribeNet = NetInfo.addEventListener((state: any) => {
       setIsOnline(state.isConnected ?? false);
     });
@@ -54,40 +69,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
 
-      // ← CORREÇÃO: propaga o token existente para o backend Java
       if (session?.access_token) setAuthToken(session.access_token);
 
       if (session?.user) {
-        getUserProfile(session.user.id).then(async (profileData) => {
-          setProfile(profileData);
-          if (profileData) {
-            const companies = await getUserCompanies();
-            if (companies.length > 0) {
-              await saveUserCompany(companies[0].id);
-            }
-          }
-          setLoading(false);
-        });
+        loadProfile(session.user).finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (retryTimer.current) clearTimeout(retryTimer.current);
       setSession(session);
       setUser(session?.user ?? null);
-
-      // ← CORREÇÃO: atualiza o token no backend Java a cada mudança de sessão
       setAuthToken(session?.access_token ?? null);
 
       if (session?.user) {
-        getUserProfile(session.user.id).then(setProfile);
+        loadProfile(session.user);
       } else {
         setProfile(null);
       }
     });
 
-    return () => { subscription.unsubscribe(); unsubscribeNet(); };
+    return () => {
+      if (retryTimer.current) clearTimeout(retryTimer.current);
+      subscription.unsubscribe();
+      unsubscribeNet();
+    };
   }, []);
 
   return (

@@ -29,6 +29,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/verify-company").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/health").permitAll()
+                        .requestMatchers("/api/debug/jwt").permitAll()
                         .anyRequest().authenticated()
                 )
                 // Return 401 (not 403) for unauthenticated requests

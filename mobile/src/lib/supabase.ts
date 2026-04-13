@@ -136,6 +136,29 @@ export async function getUserProfile(userId?: string): Promise<Profile | null> {
     return result.data || null;
   } catch (error) {
     console.error('Error fetching profile via API:', error);
+
+    // Fallback: build minimal profile directly from Supabase Auth session
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        console.warn('⚠️ Using Supabase Auth fallback profile (backend unavailable)');
+        return {
+          id: user.id,
+          auth_user_id: user.id,
+          display_name: user.user_metadata?.full_name
+            || user.user_metadata?.name
+            || user.user_metadata?.display_name
+            || user.email?.split('@')[0]
+            || null,
+          email: user.email || null,
+          avatar_url: user.user_metadata?.avatar_url || null,
+          is_super_admin: false,
+          created_at: user.created_at,
+        };
+      }
+    } catch (fallbackError) {
+      console.error('Supabase Auth fallback failed:', fallbackError);
+    }
     return null;
   }
 }
@@ -147,6 +170,7 @@ export async function getUserCompanies(): Promise<Company[]> {
     return result.data || [];
   } catch (error) {
     console.error('Error fetching companies via API:', error);
+    // Return empty array — user will see company selection screen
     return [];
   }
 }
