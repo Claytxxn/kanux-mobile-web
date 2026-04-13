@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,9 @@ import com.kanux.entity.UserProfile;
 import com.kanux.repository.UserProfileRepository;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -100,7 +104,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     lastError = dbError;
                     log.warn("DB lookup attempt {} failed for user {}: {}", attempt + 1, authUserId, dbError.getMessage());
                     if (attempt < 2) {
-                        try { Thread.sleep(100 * (attempt + 1)); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
+                        backoff(attempt);
                     }
                 }
             }
@@ -120,10 +124,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             );
             SecurityContextHolder.getContext().setAuthentication(auth);
 
-        } catch (Exception e) {
-            log.error("JWT auth failed [{}]: {} — {}", request.getRequestURI(), e.getClass().getSimpleName(), e.getMessage(), e);
+        } catch (ExpiredJwtException | MalformedJwtException | SignatureException e) {
+            log.warn("JWT rejected [{}]: {} — {}", request.getRequestURI(), e.getClass().getSimpleName(), e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("JWT auth failed [{}]: {} — {}", request.getRequestURI(), e.getClass().getSimpleName(), e.getMessage());
         }
         filterChain.doFilter(request, response);
+    }
+
+    private void backoff(int attempt) {
+        try {
+            TimeUnit.MILLISECONDS.sleep(100L * (attempt + 1));
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
     }
 
 }
