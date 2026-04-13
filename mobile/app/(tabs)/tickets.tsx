@@ -37,7 +37,7 @@ export default function TicketsScreen() {
       const companiesData = await getUserCompanies();
       setCompanies(companiesData);
 
-      // Restore saved company or use first
+      // Restaurar empresa salva ou usar a primeira
       const savedId = await getUserCompany();
       const valid = companiesData.find(c => c.id === savedId);
       const activeId = valid ? savedId! : companiesData[0]?.id || '';
@@ -63,7 +63,7 @@ export default function TicketsScreen() {
     }
   }
 
-  // Load on mount
+  // Carregar ao montar
   useEffect(() => {
     (async () => {
       const id = await loadCompanies();
@@ -72,7 +72,7 @@ export default function TicketsScreen() {
     })();
   }, []);
 
-  // Reload tickets when tab is focused
+  // Recarregar chamados quando a aba recebe foco
   useFocusEffect(
     useCallback(() => {
       if (selectedCompanyId) loadTickets(selectedCompanyId);
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadows.floating,
   },
-  // Modal styles
+  // Estilos do modal
   modalOverlay: {
     flex: 1,
     backgroundColor: colors.overlay,
@@ -520,7 +520,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
-});
   ticketTitle: {
     fontSize: 17,
     fontWeight: '600',
