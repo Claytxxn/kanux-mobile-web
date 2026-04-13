@@ -1,11 +1,9 @@
 package com.kanux.security;
 
-import com.kanux.repository.UserProfileRepository;
-
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,9 +14,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
+import com.kanux.entity.UserProfile;
+import com.kanux.repository.UserProfileRepository;
+
+import io.jsonwebtoken.Claims;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @SuppressWarnings("unused")
 @Component
@@ -45,18 +48,61 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
         String token = authHeader.substring(7);
         try {
-            if (jwtService.isValid(token)) {
-                UUID authUserId = jwtService.extractUserId(token);
-                userProfileRepository.findByAuthUserId(authUserId).ifPresent(profile -> {
-                    var auth = new UsernamePasswordAuthenticationToken(
-                            profile, null,
-                            profile.isSuperAdmin()
-                                    ? List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"), new SimpleGrantedAuthority("ROLE_USER"))
-                                    : List.of(new SimpleGrantedAuthority("ROLE_USER"))
-                    );
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                });
+            Claims claims = jwtService.getClaims(token);
+            UUID authUserId = UUID.fromString(claims.getSubject());
+
+            // Find existing profile or create one on first login
+            Optional<UserProfile> profileOpt = userProfileRepository.findByAuthUserId(authUserId);
+            UserProfile profile;
+            if (profileOpt.isPresent()) {
+                profile = profileOpt.get();
+            } else {
+                // Auto-provision profile from Supabase JWT claims
+                profile = new UserProfile();
+                profile.setAuthUserId(authUserId);
+
+                String email = claims.get("email", String.class);
+                if (email == null || email.isBlank()) {
+                    // email sometimes nested under user_metadata
+                    try {
+                        @SuppressWarnings("unchecked")
+                        java.util.Map<String, Object> meta =
+                                (java.util.Map<String, Object>) claims.get("user_metadata");
+                        if (meta != null && meta.get("email") instanceof String s) email = s;
+                    } catch (Exception ignored) {}
+                }
+                profile.setEmail(email);
+
+                // Try to get display name from user_metadata
+                try {
+                    @SuppressWarnings("unchecked")
+                    java.util.Map<String, Object> meta =
+                            (java.util.Map<String, Object>) claims.get("user_metadata");
+                    if (meta != null) {
+                        String name = null;
+                        if (meta.get("full_name") instanceof String s) name = s;
+                        else if (meta.get("name") instanceof String s) name = s;
+                        else if (meta.get("display_name") instanceof String s) name = s;
+                        if (name != null && !name.isBlank()) profile.setDisplayName(name);
+                    }
+                } catch (Exception ignored) {}
+
+                if (profile.getDisplayName() == null && email != null) {
+                    profile.setDisplayName(email.split("@")[0]);
+                }
+
+                profile = userProfileRepository.save(profile);
+                log.info("Auto-provisioned profile for user {}", authUserId);
             }
+
+            var auth = new UsernamePasswordAuthenticationToken(
+                    profile, null,
+                    profile.isSuperAdmin()
+                            ? List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"), new SimpleGrantedAuthority("ROLE_USER"))
+                            : List.of(new SimpleGrantedAuthority("ROLE_USER"))
+            );
+            SecurityContextHolder.getContext().setAuthentication(auth);
+
         } catch (Exception e) {
             log.debug("Erro ao autenticar JWT: {}", e.getMessage());
         }

@@ -28,6 +28,11 @@ public class JwtService {
         catch (Exception e) { log.debug("JWT inválido: {}", e.getMessage()); return false; }
     }
 
+    /** Returns full claims so the filter can extract email and other data. */
+    public Claims getClaims(String token) {
+        return parseClaims(token);
+    }
+
     private Claims parseClaims(String token) {
         Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
         return Jwts.parser()

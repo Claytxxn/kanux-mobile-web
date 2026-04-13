@@ -4,7 +4,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashMap;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.Objects;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,6 +29,7 @@ import com.kanux.entity.Message;
 import com.kanux.entity.UserProfile;
 import com.kanux.repository.ChatRepository;
 import com.kanux.repository.MessageRepository;
+import com.kanux.repository.UserProfileRepository;
 
 @RestController
 @RequestMapping("/api/chats")
@@ -32,10 +37,15 @@ public class ChatController {
 
     private final ChatRepository chatRepository;
     private final MessageRepository messageRepository;
+    private final UserProfileRepository userProfileRepository;
 
-    public ChatController(ChatRepository chatRepository, MessageRepository messageRepository) {
+    // chatId -> (userId -> lastTypingTimestampMillis)
+    private final Map<UUID, Map<UUID, Long>> typingMap = new ConcurrentHashMap<>();
+
+    public ChatController(ChatRepository chatRepository, MessageRepository messageRepository, UserProfileRepository userProfileRepository) {
         this.chatRepository = chatRepository;
         this.messageRepository = messageRepository;
+        this.userProfileRepository = userProfileRepository;
     }
 
     @SuppressWarnings("null")
@@ -111,6 +121,53 @@ public class ChatController {
         message.setAttachments("[]");
         Message saved = messageRepository.save(message);
         return ResponseEntity.ok(ApiResponse.ok(toMap(saved)));
+    }
+
+    @PostMapping("/{chatId}/typing")
+    public ResponseEntity<ApiResponse<Void>> setTyping(
+            @AuthenticationPrincipal UserProfile p, @PathVariable String chatId,
+            @RequestBody Map<String, Object> body) {
+        if (p == null) return ResponseEntity.status(401).body(ApiResponse.fail("Unauthorized"));
+        boolean typing = false;
+        if (body != null && body.containsKey("typing")) {
+            try { typing = Boolean.parseBoolean(String.valueOf(body.get("typing"))); } catch (Exception ignored) {}
+        }
+        UUID cId;
+        try { cId = UUID.fromString(chatId); } catch (Exception e) { return ResponseEntity.badRequest().body(ApiResponse.fail("Invalid chatId")); }
+
+        Map<UUID, Long> m = typingMap.computeIfAbsent(cId, k -> new ConcurrentHashMap<>());
+        if (typing) {
+            m.put(p.getId(), System.currentTimeMillis());
+        } else {
+            m.remove(p.getId());
+        }
+
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
+    @GetMapping("/{chatId}/typing")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTyping(
+            @AuthenticationPrincipal UserProfile p, @PathVariable String chatId) {
+        if (p == null) return ResponseEntity.status(401).body(ApiResponse.fail("Unauthorized"));
+        UUID cId;
+        try { cId = UUID.fromString(chatId); } catch (Exception e) { return ResponseEntity.badRequest().body(ApiResponse.fail("Invalid chatId")); }
+
+        Map<UUID, Long> m = typingMap.getOrDefault(cId, new HashMap<>());
+        long now = System.currentTimeMillis();
+        long ttl = 5000; // consider typing active if updated within last 5s
+
+        List<Map<String, Object>> result = m.entrySet().stream()
+                .filter(e -> now - e.getValue() <= ttl && !e.getKey().equals(p.getId()))
+                .map(e -> {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    UUID userId = e.getKey();
+                    map.put("user_profile_id", userId);
+                    Optional<UserProfile> opt = userProfileRepository.findById(Objects.requireNonNull(userId));
+                    map.put("display_name", opt.map(UserProfile::getDisplayName).orElse(null));
+                    return map;
+                }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     private Map<String, Object> toMap(Message m) {

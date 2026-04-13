@@ -113,7 +113,7 @@ export function useOfflineMessages(chatId: string) {
   const sendMessage = async (content: string) => {
     if (isOnline) {
       // Send directly
-      const message = await sendSupabaseMessage(chatId, content);
+      const message = await sendApiMessage(chatId, content);
       if (message) {
         setMessages(prev => [...prev, message]);
       }

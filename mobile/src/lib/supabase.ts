@@ -101,6 +101,27 @@ export type Department = {
   created_at: string;
 };
 
+// Typing indicator helpers
+export async function setChatTyping(chatId: string, typing: boolean): Promise<any> {
+  try {
+    const result = await api.setTyping(chatId, typing);
+    return result;
+  } catch (error) {
+    console.error('Error setting typing status via API:', error);
+    return null;
+  }
+}
+
+export async function getChatTyping(chatId: string): Promise<any[]> {
+  try {
+    const result = await api.getTyping(chatId);
+    return result.data || [];
+  } catch (error) {
+    console.error('Error fetching typing status via API:', error);
+    return [];
+  }
+}
+
 // Helper to get current user
 export async function getCurrentUser() {
   const { data: { user }, error } = await supabase.auth.getUser();

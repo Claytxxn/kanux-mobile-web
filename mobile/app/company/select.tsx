@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, Company } from '../../src/lib/supabase';
+import { saveUserCompany } from '../../src/lib/offlineStorage';
 import { colors, spacing } from '../../src/theme';
 
 export default function SelectCompanyScreen() {
@@ -40,7 +41,7 @@ export default function SelectCompanyScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.companyItem}
-            onPress={() => router.back()}
+            onPress={async () => { await saveUserCompany(item.id); router.replace('/(tabs)'); }}
           >
             <View style={styles.companyIcon}>
               <Text style={styles.companyIconText}>

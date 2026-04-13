@@ -1,46 +1,54 @@
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { getChatMessages, sendMessage, Message } from '../../src/lib/supabase';
 import { colors, spacing } from '../../src/theme';
+import { useOfflineMessages } from '../../src/contexts/SyncContext';
+import { getChatTyping, setChatTyping } from '../../src/lib/supabase';
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [remoteTyping, setRemoteTyping] = useState<string[]>([]);
+  const typingTimer = useRef<any>(null);
 
-  async function loadMessages() {
-    if (!id) return;
-    try {
-      const data = await getChatMessages(id);
-      setMessages(data);
-    } catch (error) {
-      console.error('Error loading messages:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const { messages, loading, sendMessage, refresh } = useOfflineMessages(id as string);
 
+  // Poll typing status
   useEffect(() => {
-    loadMessages();
-    
-    // Poll for new messages every 5 seconds
-    const interval = setInterval(loadMessages, 5000);
-    return () => clearInterval(interval);
-  }, [id]);
+    if (!id) return;
+    let mounted = true;
+    const fetchTyping = async () => {
+      try {
+        const t = await getChatTyping(id as string);
+        if (!mounted) return;
+        // t is expected to be array of { user_profile_id, display_name }
+        const names = (t || [])
+          .filter((u: any) => u.user_profile_id !== user?.id)
+          .map((u: any) => u.display_name || 'Alguém');
+        setRemoteTyping(names);
+      } catch (e) {
+        console.error('Error fetching typing status:', e);
+      }
+    };
+
+    fetchTyping();
+    const interval = setInterval(fetchTyping, 1500);
+    return () => { mounted = false; clearInterval(interval); };
+  }, [id, user?.id]);
 
   async function handleSend() {
     if (!newMessage.trim() || !id || sending) return;
-    
+
     setSending(true);
     try {
-      const sentMessage = await sendMessage(id, newMessage.trim());
+      // ensure typing stopped
+      try { await setChatTyping(id as string, false); } catch {}
+
+      const sentMessage = await sendMessage(newMessage.trim());
       if (sentMessage) {
-        setMessages(prev => [...prev, sentMessage]);
         setNewMessage('');
       }
     } catch (error) {
@@ -67,15 +75,24 @@ export default function ChatScreen() {
           const isMyMessage = item.user_profile_id === user?.id;
           return (
             <View 
+              key={item.id}
               style={[styles.messageBubble, isMyMessage ? styles.myMessage : styles.otherMessage]}
             >
               <Text style={styles.messageText}>{item.content}</Text>
               <Text style={styles.messageTime}>
                 {new Date(item.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </Text>
+              {item.pending && (
+                <Text style={styles.pendingText}>Enviando...</Text>
+              )}
             </View>
           );
         })}
+        {remoteTyping.length > 0 && (
+          <View style={styles.typingIndicator}>
+            <Text style={styles.typingText}>{`${remoteTyping.join(', ')} está digitando...`}</Text>
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.inputContainer}>
@@ -84,7 +101,14 @@ export default function ChatScreen() {
           placeholder="Digite sua mensagem..."
           placeholderTextColor={colors.textMuted}
           value={newMessage}
-          onChangeText={setNewMessage}
+          onChangeText={(text) => {
+            setNewMessage(text);
+            // notify typing start and debounce stop
+            if (!id) return;
+            try { setChatTyping(id as string, true); } catch (e) { }
+            if (typingTimer.current) clearTimeout(typingTimer.current);
+            typingTimer.current = setTimeout(() => { try { setChatTyping(id as string, false); } catch (e) {} }, 1500);
+          }}
           multiline
           maxLength={1000}
         />
@@ -183,6 +207,20 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: colors.text,
     fontWeight: '600',
+  },
+  pendingText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  typingIndicator: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  typingText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontStyle: 'italic',
   },
 });
 

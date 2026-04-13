@@ -4,170 +4,147 @@ let detectionPromise: Promise<string> | null = null;
 
 const detectApiUrl = async (): Promise<string> => {
   if (cachedApiUrl) return cachedApiUrl;
-  
-  console.log('🔍 Auto-detecting Java Backend API server...');
-  
-  // URLs to try in order of preference
-  const urlsToTry = [
-    'http://localhost:8080',           // Local development
-    'http://10.0.2.2:8080',            // Android emulator
-    'https://kanux-mobile-web-production.up.railway.app'  // Production
-  ];
-  
-  for (const url of urlsToTry) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
-      
-      const response = await fetch(`${url}/api/verify-company`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: 'test' }),
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      // Any response means the server is reachable
-      const text = await response.text();
-      if (text.includes('success') || text.includes('error') || text.includes('company')) {
-        cachedApiUrl = url;
-        console.log('✅ Java Backend API found at:', url);
-        return url;
+  if (detectionPromise) return detectionPromise;
+
+  detectionPromise = (async () => {
+    console.log('🔍 Auto-detecting Java Backend API server...');
+
+    // URLs to try in order of preference (produção primeiro!)
+    const urlsToTry = [
+      'https://kanux-mobile-web-production.up.railway.app',
+      'http://10.0.2.2:10000',
+      'http://localhost:10000',
+    ];
+
+    for (const url of urlsToTry) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        const response = await fetch(`${url}/api/verify-company`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: 'test' }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        const text = await response.text();
+        if (text.includes('success') || text.includes('error') || text.includes('company')) {
+          cachedApiUrl = url;
+          console.log(`✅ Backend detectado: ${url}`);
+          detectionPromise = null;
+          return url;
+        }
+      } catch {
+        console.log(`❌ Backend indisponível: ${url}`);
       }
-    } catch (error) {
-      console.log('❌ Cannot reach:', url);
-      continue;
     }
-  }
-  
-  console.warn('⚠️ Could not auto-detect API server, using default');
-  cachedApiUrl = 'http://localhost:8080';
+
+    console.warn('⚠️ Sem backend detectado, usando produção');
+    cachedApiUrl = 'https://kanux-mobile-web-production.up.railway.app';
+    detectionPromise = null;
+    return cachedApiUrl;
+  })();
+
+  return detectionPromise;
+};
+
+// Get API URL sync
+export const getApiUrl = (): string => {
+  if (cachedApiUrl) return cachedApiUrl;
+  cachedApiUrl = 'https://kanux-mobile-web-production.up.railway.app';
   return cachedApiUrl;
 };
 
-// Get API URL
-const getApiUrl = (): string => {
-  if (cachedApiUrl) return cachedApiUrl;
-  if (!detectionPromise) {
-    detectionPromise = detectApiUrl();
-  }
-  return 'http://localhost:8080';
-};
-
-// Initialize API URL detection
+// Initialize (async preferred) — call once on app start
 export const initApi = async (): Promise<string> => {
+  if (cachedApiUrl) return cachedApiUrl;
   try {
-    const Constants = await import('expo-constants');
-    // Use manifest or default for config (expoConfig deprecated)
-    const configUrl = Constants.default?.manifest?.extra?.apiUrl || Constants.default?.extra?.apiUrl;
-    if (configUrl) {
+    const { default: Constants } = await import('expo-constants');
+    const configUrl = Constants?.expoConfig?.extra?.apiUrl ||
+                      Constants?.manifest?.extra?.apiUrl ||
+                      Constants?.extra?.apiUrl;
+    if (configUrl && typeof configUrl === 'string') {
       cachedApiUrl = configUrl;
-      console.log('✅ Using configured API URL:', configUrl);
+      console.log(`✅ API config: ${configUrl}`);
       return configUrl;
     }
-    
-    const isProduction = Constants.default?.manifest?.extra?.isProduction || Constants.default?.extra?.isProduction;
-    if (isProduction) {
-      cachedApiUrl = 'https://your-backend-production.com';
-      console.log('✅ Using production API URL:', cachedApiUrl);
-      return cachedApiUrl;
-    }
-  } catch (e) {
-    // expo-constants not available
-  }
-  
+  } catch {}
   return detectApiUrl();
 };
 
-export const getApiUrlSync = (): string => {
-  return getApiUrl();
-};
+export const getApiUrlSync = getApiUrl;
 
 // Token storage
 let authToken: string | null = null;
 
-export const setAuthToken = (token: string | null) => {
-  authToken = token;
-};
+export const setAuthToken = (token: string | null) => authToken = token;
+export const getAuthToken = (): string | null => authToken;
 
-export const getAuthToken = (): string | null => {
-  return authToken;
-};
+const getHeaders = (requiresAuth = true): HeadersInit => ({
+  'Content-Type': 'application/json',
+  ...(requiresAuth && authToken && { Authorization: `Bearer ${authToken}` }),
+});
 
-const getHeaders = (requiresAuth: boolean = true): HeadersInit => {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
-  
-  if (requiresAuth && authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
-  }
-  
-  return headers;
-};
-
-const API_BASE_URL = getApiUrl();
-
-// Generic fetch helper
-async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}, requiresAuth: boolean = true): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+// Generic API request (resolve base URL at request time to allow detection/init)
+async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}, requiresAuth = true): Promise<T> {
+  const base = await initApi();
+  const response = await fetch(`${base}${endpoint}`, {
     ...options,
-    headers: {
-      ...getHeaders(requiresAuth),
-      ...options.headers,
-    },
+    headers: { ...getHeaders(requiresAuth), ...options.headers },
   });
 
-  const data = await response.json();
+  // Read body as text first to handle empty or non-JSON responses safely
+  const text = await response.text();
+
+  if (!text || text.trim() === '') {
+    if (!response.ok) {
+      throw new Error(`Erro HTTP ${response.status}`);
+    }
+    return {} as T;
+  }
+
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    if (!response.ok) {
+      throw new Error(`Erro HTTP ${response.status}`);
+    }
+    throw new Error(`Resposta inválida do servidor`);
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || data.message || `Erro ${response.status}`);
+    throw new Error(data?.error || data?.message || `Erro HTTP ${response.status}`);
   }
 
   return data;
 }
 
 export const api = {
-  baseUrl: API_BASE_URL,
+  baseUrl: getApiUrlSync(),
   
   // Auth
   async login(email: string, password: string) {
-    const result: any = await apiRequest('/api/auth/login', {
+    const result = await apiRequest<{ success: boolean; data?: { token: string } }>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }, false);
     
-    if (result.success && result.data?.token) {
-      setAuthToken(result.data.token);
-    }
+    if (result.success && result.data?.token) setAuthToken(result.data.token);
     return result;
   },
 
-  async getProfile() {
-    return apiRequest('/api/profile');
-  },
-
-  async getUserCompanies() {
-    return apiRequest('/api/companies');
-  },
-
-  async getCompanyMembers(companyId: string) {
-    return apiRequest(`/api/companies/${companyId}/members`);
-  },
-
-  async updateProfile(data: { display_name?: string; avatar_url?: string; phone?: string; position?: string; department?: string }) {
-    return apiRequest('/api/profile', { method: 'PATCH', body: JSON.stringify(data) });
-  },
+  // Profile
+  async getProfile() { return apiRequest('/api/profile'); },
 
   // Companies
-  async getCompanies() {
-    return apiRequest('/api/companies');
-  },
-
-  async getAllCompanies() {
-    return apiRequest('/api/admin/companies');
-  },
+  async getUserCompanies() { return apiRequest('/api/companies'); },
+  async getCompanies() { return apiRequest('/api/companies'); },
+  async getAllCompanies() { return apiRequest('/api/admin/companies'); },
+  async getCompanyMembers(companyId: string) { return apiRequest(`/api/companies/${companyId}/members`); },
 
   async createCompany(name: string, slug: string) {
     return apiRequest('/api/companies', {
@@ -176,17 +153,13 @@ export const api = {
     });
   },
 
-  async deleteCompany(id: string) {
-    return apiRequest(`/api/admin/company?id=${id}`, { method: 'DELETE' });
-  },
-
   // Members
   async getMembers(companyId?: string) {
     const query = companyId ? `?companyId=${companyId}` : '';
     return apiRequest(`/api/admin/members${query}`);
   },
 
-  async addMember(companyId: string, userProfileId: string, role: string = 'MEMBER') {
+  async addMember(companyId: string, userProfileId: string, role = 'MEMBER') {
     return apiRequest('/api/admin/members', {
       method: 'POST',
       body: JSON.stringify({ company_id: companyId, user_profile_id: userProfileId, role }),
@@ -209,33 +182,17 @@ export const api = {
     const params = new URLSearchParams();
     if (companyId) params.append('companyId', companyId);
     if (ticketId) params.append('ticketId', ticketId);
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return apiRequest(`/api/tickets${query}`);
+    return apiRequest(`/api/tickets?${params}`);
   },
 
-  async createTicket(data: {
-    title: string;
-    description?: string;
-    companyId: string;
-    departmentId?: string;
-    priority?: string;
-    creatorProfileId?: string;
-  }) {
+  async createTicket(data: any) {
     return apiRequest('/api/tickets', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
-  async updateTicket(data: {
-    id: string;
-    title?: string;
-    description?: string;
-    priority?: string;
-    status?: string;
-    departmentId?: string;
-    assigneeProfileId?: string;
-  }) {
+  async updateTicket(data: any) {
     return apiRequest('/api/tickets', {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -258,23 +215,27 @@ export const api = {
   },
 
   // Chats
-  async getChats(companyId?: string, chatId?: string) {
-    const params = new URLSearchParams();
-    if (companyId) params.append('companyId', companyId);
-    if (chatId) params.append('chatId', chatId);
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return apiRequest(`/api/chats${query}`);
+  async getChats(companyId?: string) {
+    return apiRequest(companyId ? `/api/chats?companyId=${companyId}` : '/api/chats');
   },
 
   async getMessages(chatId: string) {
     return apiRequest(`/api/chats/${chatId}/messages`);
   },
 
-  async createChat(name: string, companyId: string, departmentId?: string, isPrivate: boolean = false) {
-    return apiRequest('/api/chats', {
+  async createChat(data: any) {
+    return apiRequest('/api/chats', { method: 'POST', body: JSON.stringify(data) });
+  },
+
+  async setTyping(chatId: string, typing: boolean) {
+    return apiRequest(`/api/chats/${chatId}/typing`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'chat', name, companyId, departmentId, is_private: isPrivate }),
+      body: JSON.stringify({ typing }),
     });
+  },
+
+  async getTyping(chatId: string) {
+    return apiRequest(`/api/chats/${chatId}/typing`, { method: 'GET' });
   },
 
   async sendMessage(chatId: string, content: string, userProfileId: string) {
@@ -288,7 +249,7 @@ export const api = {
     return apiRequest(`/api/chats?id=${id}`, { method: 'DELETE' });
   },
 
-  // Verify Company
+  // Verify company (no auth)
   async verifyCompany(slug: string) {
     return apiRequest('/api/verify-company', {
       method: 'POST',
@@ -296,16 +257,8 @@ export const api = {
     }, false);
   },
 
-  // Invite User
-  async inviteUser(email: string, companyId: string, role: string = 'MEMBER', displayName?: string) {
-    return apiRequest('/api/admin/invite-user', {
-      method: 'POST',
-      body: JSON.stringify({ email, company_id: companyId, role, display_name: displayName }),
-    });
-  },
-
-  // Logout
   logout() {
     setAuthToken(null);
   },
 };
+

@@ -57,8 +57,8 @@ export default function ProfileScreen() {
           <View style={styles.infoRow}>
             <Ionicons name="person-circle" size={20} color={colors.primary} />
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Nome de Exibicao</Text>
-              <Text style={styles.infoValue}>{profile?.display_name || 'Nao definido'}</Text>
+        <Text style={styles.infoLabel}>Nome de Exibição</Text>
+              <Text style={styles.infoValue}>{profile?.display_name || 'Carregando perfil...'}</Text>
             </View>
           </View>
         </View>

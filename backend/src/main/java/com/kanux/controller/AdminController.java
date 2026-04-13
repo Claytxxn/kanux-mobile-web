@@ -17,9 +17,7 @@ public class AdminController {
     private final CompanyMemberRepository memberRepository;
     private final UserProfileRepository userProfileRepository;
 
-    public AdminController(CompanyRepository companyRepository,
-                           CompanyMemberRepository memberRepository,
-                           UserProfileRepository userProfileRepository) {
+    public AdminController(CompanyRepository companyRepository, CompanyMemberRepository memberRepository, UserProfileRepository userProfileRepository) {
         this.companyRepository = companyRepository;
         this.memberRepository = memberRepository;
         this.userProfileRepository = userProfileRepository;
