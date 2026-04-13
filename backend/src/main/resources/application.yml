@@ -44,3 +44,4 @@ logging:
 
 supabase:
   jwt-secret: ${SUPABASE_JWT_SECRET}
+  url: ${SUPABASE_URL:https://amybrdlkfocmiolcnybl.supabase.co}

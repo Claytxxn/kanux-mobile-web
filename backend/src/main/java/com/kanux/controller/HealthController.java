@@ -27,6 +27,8 @@ public class HealthController {
         info.put("status", "ok");
         info.put("jwtSecretConfigured", jwtSecret != null && !jwtSecret.equals("NOT_SET") && jwtSecret.length() > 10);
         info.put("jwtSecretLength", jwtSecret == null ? 0 : jwtSecret.length());
+        String algo = jwtService.getResolvedAlgo();
+        info.put("jwtAlgorithm", algo != null ? algo : "not-yet-resolved");
         return ResponseEntity.ok(info);
     }
 
