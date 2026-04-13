@@ -14,9 +14,11 @@ function AuthGate() {
   useEffect(() => {
     if (loading) return;
     
-    // Já logado + perfil/empresa OK → tabs
+    // Já logado + perfil/empresa OK → tabs (apenas se estiver em tela de auth)
     if (user && profile) {
-      if (!pathname.startsWith('/(tabs)')) router.replace('/(tabs)');
+      if (pathname.includes('login') || pathname.includes('company/select')) {
+        router.replace('/(tabs)');
+      }
       return;
     }
     
