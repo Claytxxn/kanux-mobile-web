@@ -1,25 +1,38 @@
 package com.kanux.security;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
-import javax.crypto.SecretKey;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.security.*;
-import java.security.spec.*;
+import java.security.AlgorithmParameters;
+import java.security.Key;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.spec.ECGenParameterSpec;
+import java.security.spec.ECParameterSpec;
+import java.security.spec.ECPoint;
+import java.security.spec.ECPublicKeySpec;
 import java.util.Base64;
 import java.util.UUID;
+
+import javax.crypto.SecretKey;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.JwtParserBuilder;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtService {
@@ -52,12 +65,10 @@ public class JwtService {
     public Claims getClaims(String token) {
         Key key = getOrResolveKey(token);
         JwtParserBuilder builder = Jwts.parser();
-        if (key instanceof SecretKey sk) {
-            builder.verifyWith(sk);
-        } else if (key instanceof PublicKey pk) {
-            builder.verifyWith(pk);
-        } else {
-            throw new JwtException("Unsupported key type: " + key.getClass().getName());
+        switch (key) {
+            case SecretKey sk -> builder.verifyWith(sk);
+            case PublicKey pk -> builder.verifyWith(pk);
+            default -> throw new JwtException("Unsupported key type: " + key.getClass().getName());
         }
         return builder.build().parseSignedClaims(token).getPayload();
     }
@@ -89,13 +100,14 @@ public class JwtService {
             String headerJson = new String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8);
             JsonNode header = new ObjectMapper().readTree(headerJson);
             return header.has("alg") ? header.get("alg").asText() : "HS256";
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             return "HS256";
         }
     }
 
     // ── ES256 (ECDSA P-256) via Supabase JWKS ──────────────────────────
 
+    @SuppressWarnings("UseSpecificCatch")
     private Key resolveES256Key() {
         String baseUrl = supabaseUrl;
         if (baseUrl == null || baseUrl.isBlank()) {
