@@ -1,8 +1,10 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { getUserCompanies, createTicket } from '../../src/lib/supabase';
+import { getUserCompanies, createTicket, Company } from '../../src/lib/supabase';
+import { getUserCompany, saveUserCompany } from '../../src/lib/offlineStorage';
 import { colors, spacing } from '../../src/theme';
 
 export default function CreateTicketScreen() {
@@ -13,15 +15,20 @@ export default function CreateTicketScreen() {
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
   const [loading, setLoading] = useState(false);
   const [companyId, setCompanyId] = useState<string>('');
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loadingCompany, setLoadingCompany] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const companies = await getUserCompanies();
-        if (companies.length > 0) {
-          setCompanyId(companies[0].id);
-        }
+        const companiesData = await getUserCompanies();
+        setCompanies(companiesData);
+        // Use saved company or first
+        const savedId = await getUserCompany();
+        const valid = companiesData.find(c => c.id === savedId);
+        const activeId = valid ? savedId! : companiesData[0]?.id || '';
+        setCompanyId(activeId);
+        if (activeId && !valid) await saveUserCompany(activeId);
       } catch (error) {
         console.error('Error loading companies for ticket creation:', error);
       } finally {
@@ -72,6 +79,32 @@ export default function CreateTicketScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.form}>
+        {/* Company Selector */}
+        {companies.length > 1 && (
+          <>
+            <Text style={styles.label}>Empresa</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.companyScroll}>
+              {companies.map((c) => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[
+                    styles.companyChip,
+                    companyId === c.id && styles.companyChipActive,
+                  ]}
+                  onPress={() => setCompanyId(c.id)}
+                >
+                  <Text style={[
+                    styles.companyChipText,
+                    companyId === c.id && styles.companyChipTextActive,
+                  ]}>
+                    {c.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        )}
+
         <Text style={styles.label}>Título *</Text>
         <TextInput
           style={styles.input}
@@ -141,6 +174,30 @@ const styles = StyleSheet.create({
   },
   form: {
     flex: 1,
+  },
+  companyScroll: {
+    marginBottom: spacing.sm,
+  },
+  companyChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: spacing.sm,
+  },
+  companyChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  companyChipText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  companyChipTextActive: {
+    color: colors.text,
   },
   label: {
     fontSize: 14,

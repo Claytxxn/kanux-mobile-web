@@ -61,7 +61,7 @@ public class TicketController {
         ticket.setCreatorProfileId(creatorId);
         ticket.setTitle(req.getTitle());
         ticket.setDescription(req.getDescription());
-        ticket.setPriority(req.getPriority() != null ? Ticket.TicketPriority.valueOf(req.getPriority()) : Ticket.TicketPriority.MEDIUM);
+        ticket.setPriority(req.getPriority() != null ? Ticket.TicketPriority.valueOf(req.getPriority().trim().toUpperCase()) : Ticket.TicketPriority.MEDIUM);
         ticket.setStatus(Ticket.TicketStatus.OPEN);
         ticket = ticketRepository.save(ticket);
         return ResponseEntity.ok(ApiResponse.ok(ticket));
@@ -75,11 +75,11 @@ public class TicketController {
         return ticketRepository.findById(UUID.fromString(req.getId())).map(t -> {
             if (req.getTitle()       != null) t.setTitle(req.getTitle());
             if (req.getDescription() != null) t.setDescription(req.getDescription());
-            if (req.getPriority()    != null) t.setPriority(Ticket.TicketPriority.valueOf(req.getPriority()));
+            if (req.getPriority()    != null) t.setPriority(Ticket.TicketPriority.valueOf(req.getPriority().trim().toUpperCase()));
             if (req.getDepartmentId()      != null) t.setDepartmentId(UUID.fromString(req.getDepartmentId()));
             if (req.getAssigneeProfileId() != null) t.setAssigneeProfileId(UUID.fromString(req.getAssigneeProfileId()));
             if (req.getStatus() != null) {
-                Ticket.TicketStatus s = Ticket.TicketStatus.valueOf(req.getStatus());
+                Ticket.TicketStatus s = Ticket.TicketStatus.valueOf(req.getStatus().trim().toUpperCase());
                 t.setStatus(s);
                 if (s == Ticket.TicketStatus.RESOLVED && t.getResolvedAt() == null) t.setResolvedAt(Instant.now());
             }

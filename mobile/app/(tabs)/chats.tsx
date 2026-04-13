@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Modal, Alert } from 'react-native';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, getCompanyChats, Chat, getCompanyMembers, Profile } from '../../src/lib/supabase';
+import { getUserCompany, saveUserCompany } from '../../src/lib/offlineStorage';
 import { api } from '../../src/lib/api';
 import { colors, spacing } from '../../src/theme';
 
@@ -26,9 +27,14 @@ export default function ChatsScreen() {
   async function loadData() {
     try {
       const companies = await getUserCompanies();
-      if (companies.length > 0) {
-        setCompanyId(companies[0].id);
-        const chatsData = await getCompanyChats(companies[0].id);
+      // Use saved company or first
+      const savedId = await getUserCompany();
+      const valid = companies.find(c => c.id === savedId);
+      const activeId = valid ? savedId! : companies[0]?.id || '';
+      if (activeId) {
+        setCompanyId(activeId);
+        await saveUserCompany(activeId);
+        const chatsData = await getCompanyChats(activeId);
         setChats(chatsData as ChatWithMember[]);
       }
     } catch (error) {

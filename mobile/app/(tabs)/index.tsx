@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, getCompanyTickets, Company, Ticket } from '../../src/lib/supabase';
+import { getUserCompany, saveUserCompany } from '../../src/lib/offlineStorage';
 import { colors, spacing, borderRadius, shadows } from '../../src/theme';
 import KanuxLogo from '../../src/components/KanuxLogo';
 
@@ -30,7 +31,12 @@ export default function HomeScreen() {
       }
 
       if (companiesData.length > 0) {
-        const ticketsData = await getCompanyTickets(companiesData[0].id);
+        // Use saved company or first
+        const savedId = await getUserCompany();
+        const valid = companiesData.find(c => c.id === savedId);
+        const activeId = valid ? savedId! : companiesData[0].id;
+        if (!valid) await saveUserCompany(activeId);
+        const ticketsData = await getCompanyTickets(activeId);
         setRecentTickets(ticketsData.slice(0, 5));
       }
     } catch (error) {

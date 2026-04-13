@@ -1,9 +1,25 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput } from 'react-native';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Modal, ScrollView } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { getUserCompanies, getCompanyTickets, Ticket } from '../../src/lib/supabase';
+import { getUserCompanies, getCompanyTickets, Company, Ticket } from '../../src/lib/supabase';
+import { getUserCompany, saveUserCompany } from '../../src/lib/offlineStorage';
 import { colors, spacing, borderRadius, shadows } from '../../src/theme';
+
+const statusLabels: Record<string, string> = {
+  ALL: 'Todos',
+  OPEN: 'Aberto',
+  PENDING: 'Pendente',
+  RESOLVED: 'Resolvido',
+  CLOSED: 'Fechado',
+};
+
+const priorityLabels: Record<string, string> = {
+  HIGH: 'Alta',
+  MEDIUM: 'Média',
+  LOW: 'Baixa',
+};
 
 export default function TicketsScreen() {
   const { profile } = useAuth();
@@ -12,14 +28,34 @@ export default function TicketsScreen() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<string>('ALL');
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [showCompanyPicker, setShowCompanyPicker] = useState(false);
 
-  async function loadData() {
+  async function loadCompanies() {
     try {
-      const companies = await getUserCompanies();
-      if (companies.length > 0) {
-        const ticketsData = await getCompanyTickets(companies[0].id);
-        setTickets(ticketsData);
-      }
+      const companiesData = await getUserCompanies();
+      setCompanies(companiesData);
+
+      // Restore saved company or use first
+      const savedId = await getUserCompany();
+      const valid = companiesData.find(c => c.id === savedId);
+      const activeId = valid ? savedId! : companiesData[0]?.id || '';
+      setSelectedCompanyId(activeId);
+      if (activeId) await saveUserCompany(activeId);
+      return activeId;
+    } catch (error) {
+      console.error('Error loading companies:', error);
+      return '';
+    }
+  }
+
+  async function loadTickets(companyId: string) {
+    if (!companyId) return;
+    setLoading(true);
+    try {
+      const ticketsData = await getCompanyTickets(companyId);
+      setTickets(ticketsData);
     } catch (error) {
       console.error('Error loading tickets:', error);
     } finally {
@@ -27,12 +63,33 @@ export default function TicketsScreen() {
     }
   }
 
+  // Load on mount
   useEffect(() => {
-    loadData();
+    (async () => {
+      const id = await loadCompanies();
+      if (id) await loadTickets(id);
+      else setLoading(false);
+    })();
   }, []);
 
+  // Reload tickets when tab is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedCompanyId) loadTickets(selectedCompanyId);
+    }, [selectedCompanyId])
+  );
+
+  async function handleSelectCompany(companyId: string) {
+    setSelectedCompanyId(companyId);
+    setShowCompanyPicker(false);
+    await saveUserCompany(companyId);
+    await loadTickets(companyId);
+  }
+
+  const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+
   const filteredTickets = tickets.filter(ticket => {
-    const matchesSearch = 
+    const matchesSearch =
       ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       ticket.number?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = filter === 'ALL' || ticket.status === filter;
@@ -48,7 +105,25 @@ export default function TicketsScreen() {
         <Text style={styles.subtitle}>{tickets.length} tickets</Text>
       </View>
 
+      {/* Company Selector */}
+      {companies.length > 1 && (
+        <TouchableOpacity
+          style={styles.companySelector}
+          onPress={() => setShowCompanyPicker(true)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.companySelectorLeft}>
+            <Ionicons name="business" size={18} color={colors.primary} />
+            <Text style={styles.companySelectorText} numberOfLines={1}>
+              {selectedCompany?.name || 'Selecionar empresa'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+      )}
+
       <View style={styles.searchContainer}>
+        <Ionicons name="search" size={18} color={colors.textMuted} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Buscar tickets..."
@@ -58,7 +133,7 @@ export default function TicketsScreen() {
         />
       </View>
 
-      <View style={styles.filterContainer}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContainer}>
         {filters.map((f) => (
           <TouchableOpacity
             key={f}
@@ -67,11 +142,11 @@ export default function TicketsScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
-              {f === 'ALL' ? 'Todos' : f}
+              {statusLabels[f] || f}
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       <FlatList
         data={filteredTickets}
@@ -89,7 +164,9 @@ export default function TicketsScreen() {
                 <Text style={styles.ticketNumber}>{item.number || item.id.slice(0, 8)}</Text>
               </View>
               <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.priority) + '20' }]}>
-                <Text style={[styles.priorityText, { color: getPriorityColor(item.priority) }]}>{item.priority}</Text>
+                <Text style={[styles.priorityBadgeText, { color: getPriorityColor(item.priority) }]}>
+                  {priorityLabels[item.priority?.toUpperCase()] || item.priority}
+                </Text>
               </View>
             </View>
             <Text style={styles.ticketTitle} numberOfLines={2}>{item.title}</Text>
@@ -100,7 +177,9 @@ export default function TicketsScreen() {
             )}
             <View style={styles.ticketFooter}>
               <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-                <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
+                <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+                  {statusLabels[item.status?.toUpperCase()] || item.status}
+                </Text>
               </View>
               <Text style={styles.ticketDate}>
                 {new Date(item.created_at).toLocaleDateString('pt-BR')}
@@ -110,8 +189,13 @@ export default function TicketsScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>🎫</Text>
-            <Text style={styles.emptyText}>Nenhum ticket encontrado</Text>
+            <Ionicons name="ticket-outline" size={56} color={colors.textMuted} />
+            <Text style={styles.emptyText}>
+              {loading ? 'Carregando...' : 'Nenhum ticket encontrado'}
+            </Text>
+            {!loading && (
+              <Text style={styles.emptySubtext}>Crie um novo ticket para começar</Text>
+            )}
           </View>
         }
       />
@@ -121,14 +205,52 @@ export default function TicketsScreen() {
         onPress={() => router.push('/tickets/create')}
         activeOpacity={0.8}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Ionicons name="add" size={28} color={colors.text} />
       </TouchableOpacity>
+
+      {/* Company Picker Modal */}
+      <Modal visible={showCompanyPicker} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecionar Empresa</Text>
+              <TouchableOpacity onPress={() => setShowCompanyPicker(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={companies}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.companyItem,
+                    item.id === selectedCompanyId && styles.companyItemActive,
+                  ]}
+                  onPress={() => handleSelectCompany(item.id)}
+                >
+                  <View style={styles.companyItemIcon}>
+                    <Text style={styles.companyItemInitial}>{item.name.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.companyItemName}>{item.name}</Text>
+                    <Text style={styles.companyItemSlug}>@{item.slug}</Text>
+                  </View>
+                  {item.id === selectedCompanyId && (
+                    <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 function getStatusColor(status: string) {
-  switch (status) {
+  switch (status?.toUpperCase()) {
     case 'OPEN': return colors.statusOpen;
     case 'PENDING': return colors.statusPending;
     case 'RESOLVED': return colors.success;
@@ -138,7 +260,7 @@ function getStatusColor(status: string) {
 }
 
 function getPriorityColor(priority: string) {
-  switch (priority) {
+  switch (priority?.toUpperCase()) {
     case 'HIGH': return colors.priorityHigh;
     case 'MEDIUM': return colors.priorityMedium;
     case 'LOW': return colors.priorityLow;
@@ -165,23 +287,57 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
+  companySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  companySelectorLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: spacing.sm,
+  },
+  companySelectorText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '500',
+    flex: 1,
+  },
   searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
+  searchIcon: {
+    position: 'absolute',
+    left: spacing.lg + spacing.md,
+    zIndex: 1,
+  },
   searchInput: {
+    flex: 1,
     backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     padding: spacing.md,
+    paddingLeft: 40,
     color: colors.text,
     fontSize: 16,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
+  filterScroll: {
     marginBottom: spacing.md,
+  },
+  filterContainer: {
+    paddingHorizontal: spacing.lg,
     gap: spacing.sm,
   },
   filterButton: {
@@ -243,11 +399,128 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: borderRadius.sm,
   },
-  priorityText: {
+  priorityBadgeText: {
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
   },
+  ticketTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  ticketDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+    lineHeight: 20,
+  },
+  ticketFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: borderRadius.full,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  ticketDate: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  empty: {
+    alignItems: 'center',
+    padding: spacing.xxl,
+    gap: spacing.md,
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptySubtext: {
+    color: colors.textMuted,
+    fontSize: 14,
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing.lg,
+    bottom: spacing.lg,
+    width: 60,
+    height: 60,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.floating,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.backgroundLight,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    maxHeight: '60%',
+    paddingBottom: spacing.xl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  companyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.lg,
+    gap: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  companyItemActive: {
+    backgroundColor: colors.primary + '15',
+  },
+  companyItemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  companyItemInitial: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  companyItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  companyItemSlug: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+});
   ticketTitle: {
     fontSize: 17,
     fontWeight: '600',

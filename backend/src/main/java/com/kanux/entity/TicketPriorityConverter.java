@@ -3,9 +3,13 @@ package com.kanux.entity;
 import com.kanux.entity.Ticket.TicketPriority;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Converter(autoApply = true)
+@Converter(autoApply = false)
 public class TicketPriorityConverter implements AttributeConverter<TicketPriority, String> {
+
+    private static final Logger log = LoggerFactory.getLogger(TicketPriorityConverter.class);
 
     @Override
     public String convertToDatabaseColumn(TicketPriority attribute) {
@@ -15,6 +19,11 @@ public class TicketPriorityConverter implements AttributeConverter<TicketPriorit
     @Override
     public TicketPriority convertToEntityAttribute(String dbData) {
         if (dbData == null || dbData.isBlank()) return null;
-        return TicketPriority.valueOf(dbData.trim().toUpperCase());
+        try {
+            return TicketPriority.valueOf(dbData.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("Unknown priority '{}', defaulting to MEDIUM", dbData);
+            return TicketPriority.MEDIUM;
+        }
     }
 }
