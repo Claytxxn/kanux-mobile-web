@@ -133,7 +133,18 @@ export async function getCurrentUser() {
 export async function getUserProfile(userId?: string): Promise<Profile | null> {
   try {
     const result = await api.getProfile();
-    return result.data || null;
+    const p = result.data;
+    if (!p) return null;
+    // Backend Java returns camelCase; normalize to mobile snake_case contract.
+    return {
+      id: p.id,
+      auth_user_id: p.auth_user_id ?? p.authUserId ?? p.id,
+      display_name: p.display_name ?? p.displayName ?? null,
+      email: p.email ?? null,
+      avatar_url: p.avatar_url ?? p.avatarUrl ?? null,
+      is_super_admin: p.is_super_admin ?? p.superAdmin ?? false,
+      created_at: p.created_at ?? p.createdAt ?? new Date().toISOString(),
+    };
   } catch (error) {
     console.error('Error fetching profile via API:', error);
 
@@ -167,7 +178,15 @@ export async function getUserProfile(userId?: string): Promise<Profile | null> {
 export async function getUserCompanies(): Promise<Company[]> {
   try {
     const result = await api.getUserCompanies();
-    return result.data || [];
+    const items = result.data || [];
+    return items.map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      company_number: c.company_number ?? c.companyNumber ?? 0,
+      created_by: c.created_by ?? c.createdBy ?? null,
+      created_at: c.created_at ?? c.createdAt ?? new Date().toISOString(),
+    }));
   } catch (error) {
     console.error('Error fetching companies via API:', error);
     // Return empty array — user will see company selection screen

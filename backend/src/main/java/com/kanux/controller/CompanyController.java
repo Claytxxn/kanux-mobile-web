@@ -32,6 +32,9 @@ public class CompanyController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<Company>>> getUserCompanies(@AuthenticationPrincipal UserProfile p) {
         if (p == null) return ResponseEntity.status(401).body(ApiResponse.fail("Unauthorized"));
+        if (p.isSuperAdmin()) {
+            return ResponseEntity.ok(ApiResponse.ok(companyRepository.findAllByOrderByCompanyNumberAsc()));
+        }
         return ResponseEntity.ok(ApiResponse.ok(companyRepository.findByMemberProfileId(p.getId())));
     }
 
@@ -44,7 +47,7 @@ public class CompanyController {
         try { companyUUID = UUID.fromString(companyId); }
         catch (IllegalArgumentException ex) { return ResponseEntity.badRequest().body(ApiResponse.fail("companyId inválido")); }
 
-        if (!memberRepository.existsByCompanyIdAndUserProfileId(companyUUID, p.getId())) {
+        if (!p.isSuperAdmin() && !memberRepository.existsByCompanyIdAndUserProfileId(companyUUID, p.getId())) {
             return ResponseEntity.status(403).body(ApiResponse.fail("Acesso negado"));
         }
 
