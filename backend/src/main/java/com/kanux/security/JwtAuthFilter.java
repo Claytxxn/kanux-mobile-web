@@ -108,7 +108,4 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private Object ess() {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
 }
