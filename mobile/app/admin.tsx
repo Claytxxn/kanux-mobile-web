@@ -1,16 +1,28 @@
 
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Switch } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../src/theme';
-import { supabase } from '../src/lib/supabase';
+import { api } from '../src/lib/api';
 
 interface Company { id: string; name: string; slug: string; created_at: string; }
 interface Ticket { id: string; title: string; status: string; priority: string; }
-interface Member { id: string; role: string; user_profile_id: string; user_profiles: { display_name: string; email: string; position?: string; }; }
-interface Chat { id: string; name: string; is_private: boolean; only_admins_send?: boolean; }
+interface Member {
+  id: string; role: string; user_profile_id: string;
+  user_profiles: { id?: string; display_name: string; email: string; position?: string; };
+}
+interface Chat { id: string; name: string; is_private: boolean; only_admins_send?: boolean; department_id?: string; }
 interface Department { id: string; name: string; slug: string; }
+interface ChatMember { id?: string; user_profile_id: string; role: string; user_profiles?: { display_name: string; email: string; }; }
+
+const ROLE_ORDER = ['MEMBER', 'MANAGER', 'ADMIN'];
+const ROLE_COLORS: Record<string, string> = {
+  MEMBER: colors.textMuted,
+  MANAGER: colors.info ?? '#3B82F6',
+  ADMIN: colors.warning ?? '#F59E0B',
+  SUPER_ADMIN: colors.error ?? '#EF4444',
+};
 
 export default function AdminScreen() {
   const router = useRouter();
@@ -24,118 +36,230 @@ export default function AdminScreen() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('overview');
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
 
-  // Create User Modal
+  // ── Create User Modal ──────────────────────────────────────────────────────
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserPosition, setNewUserPosition] = useState('');
   const [newUserRole, setNewUserRole] = useState('MEMBER');
-  const [newUserDeptId, setNewUserDeptId] = useState('');
   const [savingUser, setSavingUser] = useState(false);
 
-  // Chat Config Modal
-  const [showChatConfig, setShowChatConfig] = useState(false);
-  const [configChat, setConfigChat] = useState<Chat | null>(null);
+  // ── Create Chat Modal ──────────────────────────────────────────────────────
+  const [showCreateChat, setShowCreateChat] = useState(false);
+  const [newChatName, setNewChatName] = useState('');
+  const [newChatPrivate, setNewChatPrivate] = useState(false);
+  const [newChatAdminOnly, setNewChatAdminOnly] = useState(false);
+  const [newChatDeptId, setNewChatDeptId] = useState('');
+  const [savingChat, setSavingChat] = useState(false);
+
+  // ── Chat Members Modal ─────────────────────────────────────────────────────
+  const [showChatMembers, setShowChatMembers] = useState(false);
+  const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+  const [chatMembers, setChatMembers] = useState<ChatMember[]>([]);
+  const [loadingChatMembers, setLoadingChatMembers] = useState(false);
+
+  // ── Create Department Modal ────────────────────────────────────────────────
+  const [showCreateDept, setShowCreateDept] = useState(false);
+  const [newDeptName, setNewDeptName] = useState('');
+  const [savingDept, setSavingDept] = useState(false);
 
   useEffect(() => { checkSuperAdmin(); }, []);
-  useEffect(() => { if (isSuperAdmin) loadCompanies(); }, [isSuperAdmin]);
+  useEffect(() => { if (isSuperAdminUser) loadCompanies(); }, [isSuperAdminUser]);
   useEffect(() => { if (currentCompanyId) loadCompanyData(currentCompanyId); }, [currentCompanyId]);
 
   async function checkSuperAdmin() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase.from('user_profiles').select('is_super_admin').eq('auth_user_id', user.id).single();
-        if (profile?.is_super_admin) { setIsSuperAdmin(true); } else { router.replace('/(tabs)'); }
-      } else { router.replace('/(auth)/login'); }
-    } catch { router.replace('/(auth)/login'); } finally { setLoading(false); }
+      const res = await api.getProfile();
+      if (res?.data?.is_super_admin) {
+        setIsSuperAdminUser(true);
+      } else {
+        router.replace('/(tabs)');
+      }
+    } catch {
+      router.replace('/(auth)/login');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadCompanies() {
-    const { data } = await supabase.from('companies').select('*').order('name');
-    setCompanies(data || []);
-    if (data && data.length > 0 && !currentCompanyId) setCurrentCompanyId(data[0].id);
+    try {
+      const res = await api.getAllCompanies();
+      const list: Company[] = res?.data || [];
+      setCompanies(list);
+      if (list.length > 0 && !currentCompanyId) setCurrentCompanyId(list[0].id);
+    } catch (e) { console.error('loadCompanies', e); }
   }
 
   async function loadCompanyData(companyId: string) {
     try {
       setCurrentCompany(companies.find(c => c.id === companyId) || null);
       const [membersRes, ticketsRes, chatsRes, deptsRes] = await Promise.all([
-        supabase.from('company_members').select('*, user_profiles(display_name, email, position)').eq('company_id', companyId),
-        supabase.from('tickets').select('id, title, status, priority').eq('company_id', companyId).order('created_at', { ascending: false }),
-        supabase.from('chats').select('*').eq('company_id', companyId),
-        supabase.from('departments').select('*').eq('company_id', companyId),
+        api.getMembers(companyId),
+        api.getTickets(companyId),
+        api.getChats(companyId),
+        api.getDepartments(companyId),
       ]);
-      setMembers(membersRes.data || []);
-      setTickets(ticketsRes.data || []);
-      setChats(chatsRes.data || []);
-      setDepartments(deptsRes.data || []);
-    } catch (error) { console.error('Error loading company data:', error); }
+      setMembers(membersRes?.data || []);
+      setTickets(ticketsRes?.data || []);
+      setChats(chatsRes?.data || []);
+      setDepartments(deptsRes?.data || []);
+    } catch (error) { console.error('loadCompanyData', error); }
   }
 
+  // ── Members ────────────────────────────────────────────────────────────────
   async function handleRemoveMember(memberId: string) {
-    Alert.alert('Remover Membro', 'Tem certeza?', [
+    Alert.alert('Remover Membro', 'Deseja remover este membro da empresa?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: async () => {
-        await supabase.from('company_members').delete().eq('id', memberId);
-        loadCompanyData(currentCompanyId);
-      }},
+      {
+        text: 'Remover', style: 'destructive', onPress: async () => {
+          try {
+            await api.removeMember(memberId);
+            loadCompanyData(currentCompanyId);
+          } catch (e: any) { Alert.alert('Erro', e.message); }
+        },
+      },
     ]);
   }
 
   async function handleUpdateRole(memberId: string, newRole: string) {
-    await supabase.from('company_members').update({ role: newRole }).eq('id', memberId);
-    loadCompanyData(currentCompanyId);
+    try {
+      await api.updateMember(memberId, newRole);
+      loadCompanyData(currentCompanyId);
+    } catch (e: any) { Alert.alert('Erro', e.message); }
   }
 
   async function handleCreateUser() {
     if (!newUserName.trim() || !newUserEmail.trim()) {
-      Alert.alert('Erro', 'Nome e email são obrigatórios');
-      return;
+      Alert.alert('Erro', 'Nome e email são obrigatórios'); return;
+    }
+    if (!newUserPassword.trim() || newUserPassword.length < 6) {
+      Alert.alert('Erro', 'Senha deve ter no mínimo 6 caracteres'); return;
     }
     setSavingUser(true);
     try {
-      // Check if user profile already exists
-      let { data: existingProfile } = await supabase.from('user_profiles').select('id').eq('email', newUserEmail.trim()).single();
-      let profileId = existingProfile?.id;
-
-      if (!profileId) {
-        // Create user profile
-        const { data: newProfile, error } = await supabase.from('user_profiles').insert({
-          display_name: newUserName.trim(),
-          email: newUserEmail.trim(),
-          position: newUserPosition.trim() || null,
-        }).select().single();
-        if (error) throw error;
-        profileId = newProfile.id;
-      }
-
-      // Add to company as member
-      const { error: memberError } = await supabase.from('company_members').insert({
+      await api.adminCreateUser({
+        email: newUserEmail.trim(),
+        password: newUserPassword,
+        display_name: newUserName.trim(),
+        position: newUserPosition.trim() || undefined,
         company_id: currentCompanyId,
-        user_profile_id: profileId,
         role: newUserRole,
       });
-      if (memberError) throw memberError;
-
-      Alert.alert('Sucesso', 'Usuário adicionado com sucesso');
+      Alert.alert('Sucesso', `Usuário ${newUserName.trim()} criado com acesso ao sistema`);
       setShowCreateUser(false);
-      setNewUserName(''); setNewUserEmail(''); setNewUserPosition(''); setNewUserRole('MEMBER'); setNewUserDeptId('');
+      resetUserForm();
       loadCompanyData(currentCompanyId);
     } catch (error: any) {
       Alert.alert('Erro', error.message || 'Falha ao criar usuário');
     } finally { setSavingUser(false); }
   }
 
-  async function handleToggleChatPermission(chat: Chat) {
-    const newValue = !chat.only_admins_send;
-    await supabase.from('chats').update({ only_admins_send: newValue }).eq('id', chat.id);
-    setChats(prev => prev.map(c => c.id === chat.id ? { ...c, only_admins_send: newValue } : c));
+  function resetUserForm() {
+    setNewUserName(''); setNewUserEmail(''); setNewUserPassword('');
+    setNewUserPosition(''); setNewUserRole('MEMBER');
   }
 
-  if (loading || !isSuperAdmin) {
+  // ── Chats ──────────────────────────────────────────────────────────────────
+  async function handleCreateChat() {
+    if (!newChatName.trim()) { Alert.alert('Erro', 'Nome do chat é obrigatório'); return; }
+    setSavingChat(true);
+    try {
+      await api.createChat({
+        companyId: currentCompanyId,
+        name: newChatName.trim(),
+        isPrivate: newChatPrivate,
+        only_admins_send: newChatAdminOnly,
+        departmentId: newChatDeptId || undefined,
+      });
+      setShowCreateChat(false);
+      setNewChatName(''); setNewChatPrivate(false); setNewChatAdminOnly(false); setNewChatDeptId('');
+      loadCompanyData(currentCompanyId);
+    } catch (e: any) { Alert.alert('Erro', e.message); }
+    finally { setSavingChat(false); }
+  }
+
+  async function handleDeleteChat(chat: Chat) {
+    Alert.alert('Excluir Chat', `Excluir "#${chat.name}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir', style: 'destructive', onPress: async () => {
+          try {
+            await api.deleteChat(chat.id);
+            loadCompanyData(currentCompanyId);
+          } catch (e: any) { Alert.alert('Erro', e.message); }
+        },
+      },
+    ]);
+  }
+
+  async function handleToggleChatPermission(chat: Chat) {
+    try {
+      const newValue = !chat.only_admins_send;
+      await api.updateChat(chat.id, { only_admins_send: newValue });
+      setChats(prev => prev.map(c => c.id === chat.id ? { ...c, only_admins_send: newValue } : c));
+    } catch (e: any) { Alert.alert('Erro', e.message); }
+  }
+
+  async function openChatMembers(chat: Chat) {
+    setSelectedChat(chat);
+    setLoadingChatMembers(true);
+    setShowChatMembers(true);
+    try {
+      const res = await api.getChatMembers(chat.id);
+      setChatMembers(res?.data || []);
+    } catch (e: any) { Alert.alert('Erro', e.message); }
+    finally { setLoadingChatMembers(false); }
+  }
+
+  async function handleAddMemberToChat(userProfileId: string) {
+    if (!selectedChat) return;
+    try {
+      await api.addChatMember(selectedChat.id, userProfileId);
+      const res = await api.getChatMembers(selectedChat.id);
+      setChatMembers(res?.data || []);
+    } catch (e: any) { Alert.alert('Erro', e.message); }
+  }
+
+  async function handleRemoveMemberFromChat(userProfileId: string) {
+    if (!selectedChat) return;
+    try {
+      await api.removeChatMember(selectedChat.id, userProfileId);
+      setChatMembers(prev => prev.filter(m => m.user_profile_id !== userProfileId));
+    } catch (e: any) { Alert.alert('Erro', e.message); }
+  }
+
+  // ── Departments ────────────────────────────────────────────────────────────
+  async function handleCreateDept() {
+    if (!newDeptName.trim()) { Alert.alert('Erro', 'Nome do departamento é obrigatório'); return; }
+    setSavingDept(true);
+    try {
+      await api.createDepartment(currentCompanyId, newDeptName.trim());
+      setShowCreateDept(false);
+      setNewDeptName('');
+      loadCompanyData(currentCompanyId);
+    } catch (e: any) { Alert.alert('Erro', e.message); }
+    finally { setSavingDept(false); }
+  }
+
+  async function handleDeleteDept(dept: Department) {
+    Alert.alert('Excluir Departamento', `Excluir "${dept.name}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir', style: 'destructive', onPress: async () => {
+          try {
+            await api.deleteDepartment(dept.id);
+            loadCompanyData(currentCompanyId);
+          } catch (e: any) { Alert.alert('Erro', e.message); }
+        },
+      },
+    ]);
+  }
+
+  if (loading || !isSuperAdminUser) {
     return <View style={styles.loadingContainer}><Text style={styles.loadingText}>Carregando...</Text></View>;
   }
 
@@ -146,24 +270,29 @@ export default function AdminScreen() {
     { key: 'users', icon: 'people' as const, label: 'Usuários' },
     { key: 'chats', icon: 'chatbubbles' as const, label: 'Chats' },
     { key: 'departments', icon: 'folder' as const, label: 'Deptos' },
+    { key: 'permissions', icon: 'shield-checkmark' as const, label: 'Perms' },
   ];
+
+  // Members NOT yet in selected chat
+  const chatMemberIds = new Set(chatMembers.map(m => m.user_profile_id));
+  const membersNotInChat = members.filter(m => !chatMemberIds.has(m.user_profile_id));
 
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Painel Admin</Text>
+        <Text style={styles.headerTitle}>Painel Super Admin</Text>
         <View style={{ width: 30 }} />
       </View>
 
       {/* Company selector */}
-      <View style={styles.companySelector}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View style={styles.companySelectorBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.sm, gap: 6 }}>
           {companies.map(company => (
             <TouchableOpacity
               key={company.id}
@@ -186,17 +315,17 @@ export default function AdminScreen() {
             style={[styles.tab, activeTab === tab.key && styles.tabActive]}
             onPress={() => setActiveTab(tab.key)}
           >
-            <Ionicons name={tab.icon} size={18} color={activeTab === tab.key ? colors.primary : colors.textMuted} />
+            <Ionicons name={tab.icon} size={16} color={activeTab === tab.key ? colors.primary : colors.textMuted} />
             <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <ScrollView style={styles.content}>
-        {/* Overview Tab */}
+      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+        {/* ── Overview ──────────────────────────────────────────────────────── */}
         {activeTab === 'overview' && (
           <View style={styles.tabContent}>
-            <Text style={styles.sectionLabel}>ESTATÍSTICAS — {currentCompany?.name || ''}</Text>
+            <Text style={styles.sectionLabel}>ESTATÍSTICAS — {currentCompany?.name || '(selecione uma empresa)'}</Text>
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
                 <Ionicons name="people" size={22} color={colors.primary} />
@@ -204,39 +333,43 @@ export default function AdminScreen() {
                 <Text style={styles.statLabel}>Membros</Text>
               </View>
               <View style={styles.statCard}>
-                <Ionicons name="ticket" size={22} color={colors.warning} />
+                <Ionicons name="ticket" size={22} color={colors.warning ?? '#F59E0B'} />
                 <Text style={styles.statNumber}>{tickets.length}</Text>
                 <Text style={styles.statLabel}>Tickets</Text>
               </View>
               <View style={styles.statCard}>
-                <Ionicons name="chatbubbles" size={22} color={colors.info} />
+                <Ionicons name="chatbubbles" size={22} color={colors.info ?? '#3B82F6'} />
                 <Text style={styles.statNumber}>{chats.length}</Text>
                 <Text style={styles.statLabel}>Chats</Text>
               </View>
               <View style={styles.statCard}>
-                <Ionicons name="alert-circle" size={22} color={colors.error} />
+                <Ionicons name="alert-circle" size={22} color={colors.error ?? '#EF4444'} />
                 <Text style={styles.statNumber}>{openTickets}</Text>
                 <Text style={styles.statLabel}>Abertos</Text>
               </View>
             </View>
+            <View style={styles.statCard2}>
+              <Ionicons name="folder" size={18} color={colors.primary} />
+              <Text style={styles.statNumber2}>{departments.length} departamentos</Text>
+            </View>
           </View>
         )}
 
-        {/* Users Tab - CRUD */}
+        {/* ── Users ─────────────────────────────────────────────────────────── */}
         {activeTab === 'users' && (
           <View style={styles.tabContent}>
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionLabel}>MEMBROS — {currentCompany?.name}</Text>
               <TouchableOpacity style={styles.addButton} onPress={() => setShowCreateUser(true)}>
-                <Ionicons name="add" size={18} color={colors.text} />
+                <Ionicons name="add" size={16} color={colors.text} />
                 <Text style={styles.addButtonText}>Novo</Text>
               </TouchableOpacity>
             </View>
 
             {members.map(member => (
               <View key={member.id} style={styles.memberItem}>
-                <View style={styles.memberAvatar}>
-                  <Text style={styles.memberAvatarText}>
+                <View style={[styles.memberAvatar, { backgroundColor: ROLE_COLORS[member.role] + '40' }]}>
+                  <Text style={[styles.memberAvatarText, { color: ROLE_COLORS[member.role] }]}>
                     {(member.user_profiles?.display_name || 'U').charAt(0).toUpperCase()}
                   </Text>
                 </View>
@@ -248,64 +381,67 @@ export default function AdminScreen() {
                   )}
                 </View>
                 <TouchableOpacity
-                  style={styles.roleChip}
+                  style={[styles.roleChip, { backgroundColor: ROLE_COLORS[member.role] + '20' }]}
                   onPress={() => {
-                    const roles = ['MEMBER', 'MANAGER', 'ADMIN'];
-                    const next = roles[(roles.indexOf(member.role) + 1) % roles.length];
+                    const idx = ROLE_ORDER.indexOf(member.role);
+                    const next = ROLE_ORDER[(idx + 1) % ROLE_ORDER.length];
                     handleUpdateRole(member.id, next);
                   }}
                 >
-                  <Text style={styles.roleText}>{member.role}</Text>
+                  <Text style={[styles.roleText, { color: ROLE_COLORS[member.role] }]}>{member.role}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleRemoveMember(member.id)} style={{ padding: 4 }}>
-                  <Ionicons name="trash-outline" size={18} color={colors.error} />
+                  <Ionicons name="trash-outline" size={18} color={colors.error ?? '#EF4444'} />
                 </TouchableOpacity>
               </View>
             ))}
-            {members.length === 0 && <Text style={styles.emptyText}>Nenhum membro</Text>}
+            {members.length === 0 && <Text style={styles.emptyText}>Nenhum membro nesta empresa</Text>}
           </View>
         )}
 
-        {/* Chats Tab - Config Permissions */}
+        {/* ── Chats ─────────────────────────────────────────────────────────── */}
         {activeTab === 'chats' && (
           <View style={styles.tabContent}>
-            <Text style={styles.sectionLabel}>CHATS — {currentCompany?.name}</Text>
-            <Text style={styles.hintText}>
-              Configure quem pode enviar mensagens em cada chat
-            </Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionLabel}>CHATS — {currentCompany?.name}</Text>
+              <TouchableOpacity style={styles.addButton} onPress={() => setShowCreateChat(true)}>
+                <Ionicons name="add" size={16} color={colors.text} />
+                <Text style={styles.addButtonText}>Novo</Text>
+              </TouchableOpacity>
+            </View>
 
             {chats.map(chat => (
               <View key={chat.id} style={styles.chatConfigItem}>
-                <View style={styles.chatConfigLeft}>
-                  {chat.is_private ? (
-                    <Ionicons name="lock-closed" size={18} color={colors.warning} />
-                  ) : (
-                    <Text style={styles.hashIcon}>#</Text>
-                  )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.chatConfigName}>{chat.name}</Text>
-                    <Text style={styles.chatConfigType}>
-                      {chat.is_private ? 'Privado' : 'Público'}
-                    </Text>
+                <View style={styles.chatConfigTop}>
+                  <View style={styles.chatConfigLeft}>
+                    {chat.is_private
+                      ? <Ionicons name="lock-closed" size={16} color={colors.warning ?? '#F59E0B'} />
+                      : <Text style={styles.hashIcon}>#</Text>}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.chatConfigName}>{chat.name}</Text>
+                      <Text style={styles.chatConfigType}>{chat.is_private ? 'Privado' : 'Público'}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.chatActions}>
+                    <TouchableOpacity style={styles.chatActionBtn} onPress={() => openChatMembers(chat)}>
+                      <Ionicons name="people-outline" size={18} color={colors.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.chatActionBtn} onPress={() => handleDeleteChat(chat)}>
+                      <Ionicons name="trash-outline" size={18} color={colors.error ?? '#EF4444'} />
+                    </TouchableOpacity>
                   </View>
                 </View>
                 <TouchableOpacity
-                  style={[
-                    styles.permToggle,
-                    chat.only_admins_send ? styles.permToggleRestricted : styles.permToggleOpen,
-                  ]}
+                  style={[styles.permToggle, chat.only_admins_send ? styles.permToggleRestricted : styles.permToggleOpen]}
                   onPress={() => handleToggleChatPermission(chat)}
                 >
                   <Ionicons
                     name={chat.only_admins_send ? 'shield' : 'globe'}
-                    size={14}
-                    color={chat.only_admins_send ? colors.warning : colors.success}
+                    size={13}
+                    color={chat.only_admins_send ? (colors.warning ?? '#F59E0B') : (colors.success ?? '#10B981')}
                   />
-                  <Text style={[
-                    styles.permToggleText,
-                    { color: chat.only_admins_send ? colors.warning : colors.success },
-                  ]}>
-                    {chat.only_admins_send ? 'Só Admin/Manager' : 'Todos enviam'}
+                  <Text style={[styles.permToggleText, { color: chat.only_admins_send ? (colors.warning ?? '#F59E0B') : (colors.success ?? '#10B981') }]}>
+                    {chat.only_admins_send ? 'Só Admin/Manager enviam' : 'Todos podem enviar'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -314,10 +450,17 @@ export default function AdminScreen() {
           </View>
         )}
 
-        {/* Departments Tab */}
+        {/* ── Departments ───────────────────────────────────────────────────── */}
         {activeTab === 'departments' && (
           <View style={styles.tabContent}>
-            <Text style={styles.sectionLabel}>DEPARTAMENTOS — {currentCompany?.name}</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionLabel}>DEPARTAMENTOS — {currentCompany?.name}</Text>
+              <TouchableOpacity style={styles.addButton} onPress={() => setShowCreateDept(true)}>
+                <Ionicons name="add" size={16} color={colors.text} />
+                <Text style={styles.addButtonText}>Novo</Text>
+              </TouchableOpacity>
+            </View>
+
             {departments.map(dept => (
               <View key={dept.id} style={styles.deptItem}>
                 <Ionicons name="folder" size={20} color={colors.primary} />
@@ -325,45 +468,96 @@ export default function AdminScreen() {
                   <Text style={styles.deptName}>{dept.name}</Text>
                   <Text style={styles.deptSlug}>@{dept.slug}</Text>
                 </View>
+                <TouchableOpacity onPress={() => handleDeleteDept(dept)} style={{ padding: 4 }}>
+                  <Ionicons name="trash-outline" size={18} color={colors.error ?? '#EF4444'} />
+                </TouchableOpacity>
               </View>
             ))}
             {departments.length === 0 && <Text style={styles.emptyText}>Nenhum departamento</Text>}
           </View>
         )}
+
+        {/* ── Permissions Matrix ────────────────────────────────────────────── */}
+        {activeTab === 'permissions' && (
+          <View style={styles.tabContent}>
+            <Text style={styles.sectionLabel}>PERMISSÕES POR FUNÇÃO</Text>
+            <Text style={styles.hintText}>
+              Visão geral do que cada função pode fazer no sistema.
+              Para alterar, mude a função do membro na aba Usuários.
+            </Text>
+            {[
+              { section: 'Tickets', member: ['SELECT'], manager: ['SELECT','INSERT','UPDATE'], admin: ['SELECT','INSERT','UPDATE','DELETE'] },
+              { section: 'Chats', member: ['SELECT'], manager: ['SELECT','INSERT'], admin: ['SELECT','INSERT','UPDATE','DELETE'] },
+              { section: 'Mensagens', member: ['SELECT','INSERT'], manager: ['SELECT','INSERT','DELETE'], admin: ['SELECT','INSERT','UPDATE','DELETE'] },
+              { section: 'Membros', member: ['SELECT'], manager: ['SELECT'], admin: ['SELECT','INSERT','UPDATE','DELETE'] },
+              { section: 'Departamentos', member: ['SELECT'], manager: ['SELECT'], admin: ['SELECT','INSERT','DELETE'] },
+              { section: 'Painel Admin', member: [], manager: [], admin: [], superAdmin: ['TUDO'] },
+            ].map(row => (
+              <View key={row.section} style={styles.permRow}>
+                <Text style={styles.permSection}>{row.section}</Text>
+                <View style={styles.permCols}>
+                  {[
+                    { label: 'MEMBER', perms: row.member },
+                    { label: 'MANAGER', perms: row.manager },
+                    { label: 'ADMIN', perms: row.admin },
+                    { label: 'SUPER', perms: row.superAdmin ?? ['SELECT','INSERT','UPDATE','DELETE'] },
+                  ].map(col => (
+                    <View key={col.label} style={styles.permCol}>
+                      <Text style={[styles.permColLabel, { color: ROLE_COLORS[col.label === 'SUPER' ? 'SUPER_ADMIN' : col.label] }]}>
+                        {col.label}
+                      </Text>
+                      {col.perms.length === 0
+                        ? <Text style={styles.permNone}>—</Text>
+                        : col.perms.map(p => (
+                          <View key={p} style={styles.permBadge}>
+                            <Text style={styles.permBadgeText}>{p}</Text>
+                          </View>
+                        ))}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
-      {/* Create User Modal */}
+      {/* ══ Modal: Criar Usuário ══════════════════════════════════════════════ */}
       <Modal visible={showCreateUser} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Adicionar Usuário</Text>
-              <TouchableOpacity onPress={() => setShowCreateUser(false)}>
+              <Text style={styles.modalTitle}>Novo Usuário</Text>
+              <TouchableOpacity onPress={() => { setShowCreateUser(false); resetUserForm(); }}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.fieldLabel}>NOME *</Text>
-            <TextInput style={styles.modalInput} placeholder="Nome completo" placeholderTextColor={colors.textMuted}
+            <Text style={styles.fieldLabel}>NOME COMPLETO *</Text>
+            <TextInput style={styles.modalInput} placeholder="Ex: João Silva" placeholderTextColor={colors.textMuted}
               value={newUserName} onChangeText={setNewUserName} />
 
             <Text style={styles.fieldLabel}>EMAIL *</Text>
             <TextInput style={styles.modalInput} placeholder="email@exemplo.com" placeholderTextColor={colors.textMuted}
               value={newUserEmail} onChangeText={setNewUserEmail} keyboardType="email-address" autoCapitalize="none" />
 
+            <Text style={styles.fieldLabel}>SENHA * (mín. 6 caracteres)</Text>
+            <TextInput style={styles.modalInput} placeholder="Senha de acesso" placeholderTextColor={colors.textMuted}
+              value={newUserPassword} onChangeText={setNewUserPassword} secureTextEntry />
+
             <Text style={styles.fieldLabel}>CARGO</Text>
             <TextInput style={styles.modalInput} placeholder="Ex: Analista de Suporte" placeholderTextColor={colors.textMuted}
               value={newUserPosition} onChangeText={setNewUserPosition} />
 
-            <Text style={styles.fieldLabel}>FUNÇÃO</Text>
+            <Text style={styles.fieldLabel}>FUNÇÃO NA EMPRESA</Text>
             <View style={styles.roleSelector}>
-              {['MEMBER', 'MANAGER', 'ADMIN'].map(role => (
+              {ROLE_ORDER.map(role => (
                 <TouchableOpacity
                   key={role}
-                  style={[styles.roleSelectorItem, newUserRole === role && styles.roleSelectorItemActive]}
+                  style={[styles.roleSelectorItem, newUserRole === role && { ...styles.roleSelectorItemActive, borderColor: ROLE_COLORS[role] }]}
                   onPress={() => setNewUserRole(role)}
                 >
-                  <Text style={[styles.roleSelectorText, newUserRole === role && styles.roleSelectorTextActive]}>
+                  <Text style={[styles.roleSelectorText, newUserRole === role && { color: ROLE_COLORS[role], fontWeight: '700' }]}>
                     {role}
                   </Text>
                 </TouchableOpacity>
@@ -371,15 +565,167 @@ export default function AdminScreen() {
             </View>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowCreateUser(false)}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => { setShowCreateUser(false); resetUserForm(); }}>
                 <Text style={styles.modalCancelText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalSaveBtn, savingUser && { opacity: 0.5 }]}
-                onPress={handleCreateUser}
-                disabled={savingUser}
+                onPress={handleCreateUser} disabled={savingUser}
               >
-                <Text style={styles.modalSaveText}>{savingUser ? 'Salvando...' : 'Criar'}</Text>
+                <Text style={styles.modalSaveText}>{savingUser ? 'Criando...' : 'Criar Usuário'}</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ══ Modal: Criar Chat ════════════════════════════════════════════════ */}
+      <Modal visible={showCreateChat} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Novo Chat</Text>
+              <TouchableOpacity onPress={() => setShowCreateChat(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.fieldLabel}>NOME DO CHAT *</Text>
+            <TextInput style={styles.modalInput} placeholder="Ex: suporte-geral" placeholderTextColor={colors.textMuted}
+              value={newChatName} onChangeText={setNewChatName} autoCapitalize="none" />
+
+            <Text style={styles.fieldLabel}>DEPARTAMENTO (opcional)</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
+              <TouchableOpacity
+                style={[styles.deptChip, !newChatDeptId && styles.deptChipActive]}
+                onPress={() => setNewChatDeptId('')}
+              >
+                <Text style={[styles.deptChipText, !newChatDeptId && styles.deptChipTextActive]}>Nenhum</Text>
+              </TouchableOpacity>
+              {departments.map(d => (
+                <TouchableOpacity key={d.id}
+                  style={[styles.deptChip, newChatDeptId === d.id && styles.deptChipActive]}
+                  onPress={() => setNewChatDeptId(d.id)}
+                >
+                  <Text style={[styles.deptChipText, newChatDeptId === d.id && styles.deptChipTextActive]}>{d.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={styles.toggleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.toggleLabel}>Chat Privado</Text>
+                <Text style={styles.toggleSub}>Apenas membros adicionados podem ver</Text>
+              </View>
+              <Switch value={newChatPrivate} onValueChange={setNewChatPrivate} trackColor={{ true: colors.primary }} />
+            </View>
+
+            <View style={styles.toggleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.toggleLabel}>Somente Admin/Manager enviam</Text>
+                <Text style={styles.toggleSub}>Membros só podem ler as mensagens</Text>
+              </View>
+              <Switch value={newChatAdminOnly} onValueChange={setNewChatAdminOnly} trackColor={{ true: colors.warning ?? '#F59E0B' }} />
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowCreateChat(false)}>
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalSaveBtn, savingChat && { opacity: 0.5 }]}
+                onPress={handleCreateChat} disabled={savingChat}>
+                <Text style={styles.modalSaveText}>{savingChat ? 'Criando...' : 'Criar Chat'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ══ Modal: Membros do Chat ═══════════════════════════════════════════ */}
+      <Modal visible={showChatMembers} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>#{selectedChat?.name} — Membros</Text>
+              <TouchableOpacity onPress={() => setShowChatMembers(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {loadingChatMembers ? (
+              <Text style={styles.emptyText}>Carregando...</Text>
+            ) : (
+              <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
+                <Text style={styles.fieldLabel}>MEMBROS ATUAIS</Text>
+                {chatMembers.length === 0 && <Text style={styles.emptyText}>Nenhum membro</Text>}
+                {chatMembers.map(cm => (
+                  <View key={cm.user_profile_id} style={styles.chatMemberRow}>
+                    <View style={styles.memberAvatar}>
+                      <Text style={styles.memberAvatarText}>
+                        {(cm.user_profiles?.display_name || 'U').charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.memberName}>{cm.user_profiles?.display_name || cm.user_profile_id.slice(0, 8)}</Text>
+                      <Text style={styles.memberEmail}>{cm.user_profiles?.email || ''}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => handleRemoveMemberFromChat(cm.user_profile_id)} style={{ padding: 4 }}>
+                      <Ionicons name="remove-circle-outline" size={20} color={colors.error ?? '#EF4444'} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                {membersNotInChat.length > 0 && (
+                  <>
+                    <Text style={[styles.fieldLabel, { marginTop: spacing.md }]}>ADICIONAR MEMBRO</Text>
+                    {membersNotInChat.map(m => (
+                      <TouchableOpacity
+                        key={m.id}
+                        style={styles.addMemberRow}
+                        onPress={() => handleAddMemberToChat(m.user_profile_id)}
+                      >
+                        <View style={[styles.memberAvatar, { backgroundColor: colors.surface }]}>
+                          <Text style={[styles.memberAvatarText, { color: colors.textMuted }]}>
+                            {(m.user_profiles?.display_name || 'U').charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.memberName}>{m.user_profiles?.display_name}</Text>
+                          <Text style={styles.memberEmail}>{m.user_profiles?.email}</Text>
+                        </View>
+                        <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ══ Modal: Criar Departamento ════════════════════════════════════════ */}
+      <Modal visible={showCreateDept} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Novo Departamento</Text>
+              <TouchableOpacity onPress={() => setShowCreateDept(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.fieldLabel}>NOME *</Text>
+            <TextInput style={styles.modalInput} placeholder="Ex: Suporte Técnico" placeholderTextColor={colors.textMuted}
+              value={newDeptName} onChangeText={setNewDeptName} autoFocus />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowCreateDept(false)}>
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalSaveBtn, savingDept && { opacity: 0.5 }]}
+                onPress={handleCreateDept} disabled={savingDept}>
+                <Text style={styles.modalSaveText}>{savingDept ? 'Criando...' : 'Criar'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -395,93 +741,124 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.divider,
+    padding: spacing.md, backgroundColor: colors.surface,
+    borderBottomWidth: 1, borderBottomColor: colors.divider,
   },
   backButton: { padding: 4 },
   headerTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
-  companySelector: { padding: spacing.sm, backgroundColor: colors.backgroundLight },
+  companySelectorBar: { paddingVertical: spacing.sm, backgroundColor: colors.backgroundLight },
   companyChip: {
     paddingHorizontal: 14, paddingVertical: 6, borderRadius: borderRadius.md,
-    backgroundColor: colors.surface, marginRight: 8, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   companyChipActive: { backgroundColor: colors.primary + '18', borderColor: colors.primary },
   companyChipText: { color: colors.textSecondary, fontSize: 13, fontWeight: '500' },
   companyChipTextActive: { color: colors.text, fontWeight: '600' },
-  tabs: { flexDirection: 'row', padding: 8, backgroundColor: colors.surface, gap: 4 },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8 },
+  tabs: { flexDirection: 'row', paddingHorizontal: 6, paddingVertical: 4, backgroundColor: colors.surface, gap: 2 },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 7 },
   tabActive: { backgroundColor: colors.primary + '18' },
-  tabText: { fontSize: 10, color: colors.textMuted, marginTop: 2 },
-  tabTextActive: { color: colors.primary, fontWeight: '600' },
+  tabText: { fontSize: 9, color: colors.textMuted, marginTop: 1 },
+  tabTextActive: { color: colors.primary, fontWeight: '700' },
   content: { flex: 1 },
   tabContent: { padding: spacing.md, gap: spacing.sm },
   sectionLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: spacing.xs },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  hintText: { fontSize: 13, color: colors.textMuted, marginBottom: spacing.md },
+  hintText: { fontSize: 12, color: colors.textMuted, marginBottom: spacing.md, lineHeight: 18 },
   addButton: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: borderRadius.sm,
+    backgroundColor: colors.primary, paddingHorizontal: 10, paddingVertical: 5, borderRadius: borderRadius.sm,
   },
-  addButtonText: { color: colors.text, fontSize: 13, fontWeight: '600' },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  addButtonText: { color: colors.text, fontSize: 12, fontWeight: '700' },
+  // Stats
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.sm },
   statCard: { width: '48%', backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md, alignItems: 'center', gap: 4 },
+  statCard2: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md },
   statNumber: { fontSize: 22, fontWeight: '700', color: colors.text },
+  statNumber2: { fontSize: 15, fontWeight: '600', color: colors.text },
   statLabel: { fontSize: 11, color: colors.textMuted },
+  // Members
   memberItem: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
     borderRadius: borderRadius.sm, padding: spacing.md, gap: spacing.sm, marginBottom: spacing.xs,
   },
-  memberAvatar: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  memberAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary + '30', alignItems: 'center', justifyContent: 'center' },
   memberAvatarText: { color: colors.text, fontSize: 14, fontWeight: '700' },
   memberInfo: { flex: 1 },
-  memberName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  memberName: { fontSize: 14, fontWeight: '600', color: colors.text },
   memberEmail: { fontSize: 12, color: colors.textMuted },
   memberPosition: { fontSize: 11, color: colors.textSecondary, marginTop: 1 },
-  roleChip: { backgroundColor: colors.primary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
-  roleText: { fontSize: 11, color: colors.primary, fontWeight: '700' },
+  roleChip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
+  roleText: { fontSize: 11, fontWeight: '700' },
+  // Chats
   chatConfigItem: {
     backgroundColor: colors.surface, borderRadius: borderRadius.sm,
-    padding: spacing.md, marginBottom: spacing.xs, gap: spacing.sm,
+    padding: spacing.md, marginBottom: spacing.xs, gap: 8,
   },
-  chatConfigLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  chatConfigTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  chatConfigLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
+  chatActions: { flexDirection: 'row', gap: 4 },
+  chatActionBtn: { padding: 6 },
   hashIcon: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
-  chatConfigName: { fontSize: 15, fontWeight: '600', color: colors.text },
-  chatConfigType: { fontSize: 12, color: colors.textMuted },
+  chatConfigName: { fontSize: 14, fontWeight: '600', color: colors.text },
+  chatConfigType: { fontSize: 11, color: colors.textMuted },
   permToggle: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: borderRadius.sm,
-    alignSelf: 'flex-start', marginTop: 4,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: borderRadius.sm,
+    alignSelf: 'flex-start',
   },
-  permToggleRestricted: { backgroundColor: colors.warning + '20' },
-  permToggleOpen: { backgroundColor: colors.success + '20' },
+  permToggleRestricted: { backgroundColor: (colors.warning ?? '#F59E0B') + '20' },
+  permToggleOpen: { backgroundColor: (colors.success ?? '#10B981') + '20' },
   permToggleText: { fontSize: 12, fontWeight: '600' },
+  chatMemberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
+  addMemberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6, opacity: 0.85 },
+  // Departments
   deptItem: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
     borderRadius: borderRadius.sm, padding: spacing.md, gap: spacing.sm, marginBottom: spacing.xs,
   },
-  deptName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  deptName: { fontSize: 14, fontWeight: '600', color: colors.text },
   deptSlug: { fontSize: 12, color: colors.textMuted },
+  deptChip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: borderRadius.sm,
+    backgroundColor: colors.surface, marginRight: 6, borderWidth: 1, borderColor: colors.border,
+  },
+  deptChipActive: { backgroundColor: colors.primary + '18', borderColor: colors.primary },
+  deptChipText: { color: colors.textSecondary, fontSize: 13 },
+  deptChipTextActive: { color: colors.text, fontWeight: '600' },
+  // Permissions matrix
+  permRow: { backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md, marginBottom: spacing.xs },
+  permSection: { fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: 8 },
+  permCols: { flexDirection: 'row', gap: 4 },
+  permCol: { flex: 1, alignItems: 'center', gap: 3 },
+  permColLabel: { fontSize: 9, fontWeight: '700', marginBottom: 2 },
+  permNone: { fontSize: 11, color: colors.textMuted },
+  permBadge: { backgroundColor: colors.backgroundLight, borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 },
+  permBadgeText: { fontSize: 9, color: colors.textSecondary, fontWeight: '500' },
   emptyText: { textAlign: 'center', color: colors.textMuted, padding: spacing.lg },
+  toggleRow: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    borderRadius: borderRadius.sm, padding: spacing.md, marginBottom: spacing.sm, gap: spacing.sm,
+  },
+  toggleLabel: { fontSize: 14, fontWeight: '600', color: colors.text },
+  toggleSub: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: colors.backgroundLight, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: spacing.lg, paddingBottom: spacing.xxl },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
+  modalScroll: { maxHeight: '90%' },
+  modalContent: { backgroundColor: colors.backgroundLight, borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: spacing.lg, paddingBottom: spacing.xxl },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
-  fieldLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.5, marginBottom: 6, marginTop: spacing.md, textTransform: 'uppercase' },
+  fieldLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.5, marginBottom: 5, marginTop: spacing.md, textTransform: 'uppercase' },
   modalInput: {
     backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md,
     color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border,
   },
-  roleSelector: { flexDirection: 'row', gap: spacing.sm },
+  roleSelector: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
   roleSelectorItem: {
     flex: 1, paddingVertical: 10, borderRadius: borderRadius.sm,
     backgroundColor: colors.surface, alignItems: 'center', borderWidth: 1, borderColor: colors.border,
   },
   roleSelectorItemActive: { backgroundColor: colors.primary + '18', borderColor: colors.primary },
-  roleSelectorText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
-  roleSelectorTextActive: { color: colors.text },
+  roleSelectorText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
   modalActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
   modalCancelBtn: { flex: 1, padding: spacing.md, borderRadius: borderRadius.sm, backgroundColor: colors.surface, alignItems: 'center' },
   modalCancelText: { color: colors.textSecondary, fontWeight: '600', fontSize: 15 },

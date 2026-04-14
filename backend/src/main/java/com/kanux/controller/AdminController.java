@@ -3,15 +3,23 @@ package com.kanux.controller;
 import com.kanux.dto.*;
 import com.kanux.entity.*;
 import com.kanux.repository.*;
-import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
+
+    @Value("${supabase.url:}")
+    private String supabaseUrl;
+
+    @Value("${supabase.service-role-key:}")
+    private String serviceRoleKey;
 
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository memberRepository;
@@ -123,6 +131,88 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.ok(Map.of(
                 "message", "Usuário convidado com sucesso",
                 "profile_id", invited.getId().toString(), "email", invited.getEmail())));
+    }
+
+    @PostMapping("/create-user")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> createUser(
+            @AuthenticationPrincipal UserProfile p, @RequestBody Map<String, String> body) {
+        if (!isSuperAdmin(p)) return forbidden();
+
+        String email = body.get("email");
+        String password = body.get("password");
+        String displayName = body.get("display_name");
+        String position = body.get("position");
+        String companyId = body.get("company_id");
+        String role = body.getOrDefault("role", "MEMBER");
+
+        if (email == null || password == null || displayName == null || companyId == null)
+            return ResponseEntity.badRequest().body(ApiResponse.fail("email, password, display_name e company_id são obrigatórios"));
+
+        if (password.length() < 6)
+            return ResponseEntity.badRequest().body(ApiResponse.fail("Senha deve ter no mínimo 6 caracteres"));
+
+        try {
+            // 1. Create auth user via Supabase Admin API
+            UUID authUserId = null;
+            if (!supabaseUrl.isBlank() && !serviceRoleKey.isBlank()) {
+                RestTemplate rest = new RestTemplate();
+                HttpHeaders headers = new HttpHeaders();
+                headers.set("apikey", serviceRoleKey);
+                headers.set("Authorization", "Bearer " + serviceRoleKey);
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                Map<String, Object> authBody = new LinkedHashMap<>();
+                authBody.put("email", email);
+                authBody.put("password", password);
+                authBody.put("email_confirm", true);
+                authBody.put("user_metadata", Map.of("display_name", displayName));
+
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(authBody, headers);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> authResponse = rest.postForObject(
+                        supabaseUrl + "/auth/v1/admin/users", request, Map.class);
+                if (authResponse != null && authResponse.get("id") != null) {
+                    authUserId = UUID.fromString(authResponse.get("id").toString());
+                }
+            }
+
+            // 2. Create or find user profile
+            UserProfile profile;
+            Optional<UserProfile> existing = userProfileRepository.findByEmail(email);
+            if (existing.isPresent()) {
+                profile = existing.get();
+                if (authUserId != null) {
+                    profile.setAuthUserId(authUserId);
+                    profile = userProfileRepository.save(profile);
+                }
+            } else {
+                profile = new UserProfile();
+                profile.setAuthUserId(authUserId != null ? authUserId : UUID.randomUUID());
+                profile.setEmail(email);
+                profile.setDisplayName(displayName);
+                if (position != null && !position.isBlank()) profile.setPosition(position);
+                profile = userProfileRepository.save(profile);
+            }
+
+            // 3. Add to company
+            UUID cId = UUID.fromString(companyId);
+            if (!memberRepository.existsByCompanyIdAndUserProfileId(cId, profile.getId())) {
+                CompanyMember cm = new CompanyMember();
+                cm.setCompanyId(cId);
+                cm.setUserProfileId(profile.getId());
+                cm.setRole(CompanyMember.MemberRole.valueOf(role));
+                memberRepository.save(cm);
+            }
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("message", "Usuário criado com sucesso");
+            result.put("profile_id", profile.getId().toString());
+            result.put("email", email);
+            result.put("auth_user_created", authUserId != null);
+            return ResponseEntity.ok(ApiResponse.ok(result));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("Erro ao criar usuário: " + e.getMessage()));
+        }
     }
 
 

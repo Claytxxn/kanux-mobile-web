@@ -309,6 +309,33 @@ export const api = {
     return apiRequest(`/api/departments?companyId=${companyId}`);
   },
 
+  async createDepartment(companyId: string, name: string) {
+    return apiRequest('/api/departments', {
+      method: 'POST',
+      body: JSON.stringify({ companyId, name }),
+    });
+  },
+
+  async deleteDepartment(id: string) {
+    return apiRequest(`/api/departments?id=${id}`, { method: 'DELETE' });
+  },
+
+  // Admin - criar usuário com senha
+  async adminCreateUser(data: { email: string; password: string; display_name: string; position?: string; company_id: string; role: string }) {
+    return apiRequest('/api/admin/create-user', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Admin - atualizar chat
+  async updateChat(chatId: string, data: { name?: string; only_admins_send?: boolean }) {
+    return apiRequest(`/api/chats/${chatId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
   // Verificar empresa (sem auth)
   async verifyCompany(slug: string) {
     return apiRequest('/api/verify-company', {

@@ -1,20 +1,21 @@
 package com.kanux.controller;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.HashMap;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import java.util.Objects;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -97,6 +98,19 @@ public class ChatController {
         if (p == null) return ResponseEntity.status(401).body(ApiResponse.fail("Unauthorized"));
         chatRepository.deleteById(UUID.fromString(id));
         return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
+    @SuppressWarnings("null")
+    @PatchMapping("/{chatId}")
+    public ResponseEntity<ApiResponse<Chat>> updateChat(
+            @AuthenticationPrincipal UserProfile p, @PathVariable String chatId,
+            @RequestBody Map<String, Object> body) {
+        if (p == null) return ResponseEntity.status(401).body(ApiResponse.fail("Unauthorized"));
+        return chatRepository.findById(UUID.fromString(chatId)).map(chat -> {
+            if (body.containsKey("name")) chat.setName(String.valueOf(body.get("name")));
+            if (body.containsKey("only_admins_send")) chat.setOnlyAdminsSend(Boolean.parseBoolean(String.valueOf(body.get("only_admins_send"))));
+            return ResponseEntity.ok(ApiResponse.ok(chatRepository.save(chat)));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{chatId}/messages")

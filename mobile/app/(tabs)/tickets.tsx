@@ -134,20 +134,22 @@ export default function TicketsScreen() {
         />
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContainer}>
-        {filters.map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterButton, filter === f && styles.filterButtonActive]}
-            onPress={() => setFilter(f)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
-              {statusLabels[f] || f}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.filtersRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+          {filters.map((f) => (
+            <TouchableOpacity
+              key={f}
+              style={[styles.filterButton, filter === f && styles.filterButtonActive]}
+              onPress={() => setFilter(f)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
+                {statusLabels[f] || f}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       <FlatList
         data={filteredTickets}
@@ -334,17 +336,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  filterScroll: {
+  filtersRow: {
     marginBottom: spacing.md,
   },
   filterContainer: {
     paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
+    paddingVertical: 2,
+    gap: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   filterButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -355,11 +360,12 @@ const styles = StyleSheet.create({
   },
   filterText: {
     color: colors.textSecondary,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
   },
   filterTextActive: {
     color: colors.text,
+    fontWeight: '700',
   },
   list: {
     padding: spacing.lg,

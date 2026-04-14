@@ -3,10 +3,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { getUserCompanies, getCompanyChats, Chat, getCompanyMembers, Profile, getDepartments, Department } from '../../src/lib/supabase';
+import { getUserCompanies, getCompanyChats, Chat, getDepartments, Department, Company } from '../../src/lib/supabase';
 import { getUserCompany, saveUserCompany } from '../../src/lib/offlineStorage';
 import { api } from '../../src/lib/api';
-import { colors, spacing } from '../../src/theme';
+import { colors, spacing, borderRadius } from '../../src/theme';
 
 interface ChatWithDepartment extends Chat {
   department?: Department;
@@ -18,7 +18,9 @@ export default function ChatsScreen() {
   const [chats, setChats] = useState<ChatWithDepartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [companyId, setCompanyId] = useState<string>('');
+  const [showCompanyPicker, setShowCompanyPicker] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newChatName, setNewChatName] = useState('');
   const [newChatPrivate, setNewChatPrivate] = useState(false);
@@ -28,28 +30,16 @@ export default function ChatsScreen() {
 
   async function loadData() {
     try {
-      const companies = await getUserCompanies();
+      const companiesList = await getUserCompanies();
+      setCompanies(companiesList);
       // Usa empresa salva ou a primeira
       const savedId = await getUserCompany();
-      const valid = companies.find(c => c.id === savedId);
-      const activeId = valid ? savedId! : companies[0]?.id || '';
+      const valid = companiesList.find(c => c.id === savedId);
+      const activeId = valid ? savedId! : companiesList[0]?.id || '';
       if (activeId) {
         setCompanyId(activeId);
         await saveUserCompany(activeId);
-
-        // Carrega chats e departamentos em paralelo
-        const [chatsData, depts] = await Promise.all([
-          getCompanyChats(activeId),
-          getDepartments(activeId),
-        ]);
-        setDepartments(depts);
-
-        // Associa departamento ao chat para exibir na lista
-        const chatsWithDept: ChatWithDepartment[] = chatsData.map(c => ({
-          ...c,
-          department: depts.find(d => d.id === c.department_id) || undefined,
-        }));
-        setChats(chatsWithDept);
+        await loadChatsForCompany(activeId);
       }
     } catch (error) {
       console.error('Erro ao carregar chats:', error);
@@ -58,10 +48,42 @@ export default function ChatsScreen() {
     }
   }
 
+  async function loadChatsForCompany(cId: string) {
+    try {
+      const [chatsData, depts] = await Promise.all([
+        getCompanyChats(cId),
+        getDepartments(cId),
+      ]);
+      setDepartments(depts);
+      const chatsWithDept: ChatWithDepartment[] = chatsData.map(c => ({
+        ...c,
+        department: depts.find(d => d.id === c.department_id) || undefined,
+      }));
+      setChats(chatsWithDept);
+    } catch (error) {
+      console.error('Erro ao carregar chats:', error);
+    }
+  }
+
+  async function handleSelectCompany(cId: string) {
+    setCompanyId(cId);
+    setShowCompanyPicker(false);
+    await saveUserCompany(cId);
+    setLoading(true);
+    await loadChatsForCompany(cId);
+    setLoading(false);
+  }
+
   useEffect(() => {
     if (!user || !profile) { setLoading(false); return; }
     loadData();
   }, [user, profile]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (companyId) loadChatsForCompany(companyId);
+    }, [companyId])
+  );
 
   async function handleCreateChat() {
     if (!newChatName.trim()) {
@@ -103,6 +125,23 @@ export default function ChatsScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Company Selector */}
+      {companies.length > 1 && (
+        <TouchableOpacity
+          style={styles.companySelector}
+          onPress={() => setShowCompanyPicker(true)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.companySelectorLeft}>
+            <Ionicons name="business" size={16} color={colors.primary} />
+            <Text style={styles.companySelectorText} numberOfLines={1}>
+              {companies.find(c => c.id === companyId)?.name || 'Selecionar empresa'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+        </TouchableOpacity>
+      )}
+
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -227,6 +266,38 @@ export default function ChatsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Company Picker Modal */}
+      <Modal visible={showCompanyPicker} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+              <Text style={styles.modalTitle}>Selecionar Empresa</Text>
+              <TouchableOpacity onPress={() => setShowCompanyPicker(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            {companies.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.companyPickerItem, item.id === companyId && styles.companyPickerItemActive]}
+                onPress={() => handleSelectCompany(item.id)}
+              >
+                <View style={styles.companyPickerIcon}>
+                  <Text style={styles.companyPickerInitial}>{item.name.charAt(0).toUpperCase()}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.companyPickerName}>{item.name}</Text>
+                  <Text style={styles.companyPickerSlug}>@{item.slug}</Text>
+                </View>
+                {item.id === companyId && (
+                  <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -235,8 +306,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },  companySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    padding: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  searchContainer: {
+  companySelectorLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: spacing.sm,
+  },
+  companySelectorText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },  searchContainer: {
     padding: spacing.md,
   },
   searchInput: {
@@ -422,5 +516,21 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
+  companyPickerItem: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.xs,
+    backgroundColor: colors.surface,
+  },
+  companyPickerItemActive: {
+    backgroundColor: colors.primary + '18',
+    borderWidth: 1, borderColor: colors.primary,
+  },
+  companyPickerIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: colors.primary + '30', alignItems: 'center', justifyContent: 'center',
+  },
+  companyPickerInitial: { color: colors.primary, fontSize: 14, fontWeight: '700' },
+  companyPickerName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  companyPickerSlug: { fontSize: 12, color: colors.textMuted },
 });
 
