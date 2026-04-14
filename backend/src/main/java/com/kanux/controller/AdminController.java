@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -210,6 +211,8 @@ public class AdminController {
             result.put("email", email);
             result.put("auth_user_created", authUserId != null);
             return ResponseEntity.ok(ApiResponse.ok(result));
+        } catch (IllegalArgumentException | RestClientException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("Dados inválidos: " + e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.fail("Erro ao criar usuário: " + e.getMessage()));
         }
