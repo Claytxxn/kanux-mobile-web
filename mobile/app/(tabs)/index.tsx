@@ -1,11 +1,11 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Platform, StatusBar } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, getCompanyTickets, Company, Ticket } from '../../src/lib/supabase';
 import { getUserCompany, saveUserCompany } from '../../src/lib/offlineStorage';
-import { colors, spacing, borderRadius, shadows } from '../../src/theme';
+import { colors, spacing, borderRadius } from '../../src/theme';
 import KanuxLogo from '../../src/components/KanuxLogo';
 
 export default function HomeScreen() {
@@ -13,6 +13,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [allCompanies, setAllCompanies] = useState<Company[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [recentTickets, setRecentTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -24,19 +25,23 @@ export default function HomeScreen() {
       const companiesData = await getUserCompanies();
       setCompanies(companiesData);
 
+      let companyList = companiesData;
       if (isSuperAdmin) {
         const { supabase } = await import('../../src/lib/supabase');
-        const { data: allData } = await supabase.from('companies').select('*').order('created_at', { ascending: false });
-        setAllCompanies(allData || []);
+        const { data: allData } = await supabase.from('companies').select('*').order('name');
+        companyList = allData || companiesData;
+        setAllCompanies(companyList);
       }
 
-      if (companiesData.length > 0) {
-        // Use saved company or first
+      const availableCompanies = isSuperAdmin ? companyList : companiesData;
+
+      if (availableCompanies.length > 0) {
         const savedId = await getUserCompany();
-        const valid = companiesData.find(c => c.id === savedId);
-        const activeId = valid ? savedId! : companiesData[0].id;
-        if (!valid) await saveUserCompany(activeId);
-        const ticketsData = await getCompanyTickets(activeId);
+        const valid = availableCompanies.find(c => c.id === savedId);
+        const active = valid || availableCompanies[0];
+        setSelectedCompany(active);
+        if (!valid) await saveUserCompany(active.id);
+        const ticketsData = await getCompanyTickets(active.id);
         setRecentTickets(ticketsData.slice(0, 5));
       }
     } catch (error) {
@@ -47,242 +52,245 @@ export default function HomeScreen() {
     }
   }
 
-  useEffect(() => {
-    loadData();
-  }, [profile?.is_super_admin]);
+  useEffect(() => { loadData(); }, [profile?.is_super_admin]);
 
-  function onRefresh() {
-    setRefreshing(true);
-    loadData();
+  function onRefresh() { setRefreshing(true); loadData(); }
+
+  async function handleSelectCompany(company: Company) {
+    setSelectedCompany(company);
+    await saveUserCompany(company.id);
+    const ticketsData = await getCompanyTickets(company.id);
+    setRecentTickets(ticketsData.slice(0, 5));
   }
 
   const openTickets = recentTickets.filter(t => t.status === 'OPEN').length;
   const pendingTickets = recentTickets.filter(t => t.status === 'PENDING').length;
+  const resolvedTickets = recentTickets.filter(t => t.status === 'RESOLVED').length;
+
+  const displayCompanies = isSuperAdmin ? (allCompanies.length > 0 ? allCompanies : companies) : companies;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-      }
-    >
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
+      
+      {/* Discord-style Header */}
       <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerLeft}>
-            <KanuxLogo size="sm" showText={false} />
-            <View style={styles.greetingContainer}>
-              <Text style={styles.greeting}>Olá, {profile?.display_name || user?.email?.split('@')[0] || 'Usuário'}!</Text>
-              <Text style={styles.subtitle}>Bem-vindo ao Kanux</Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.avatar} onPress={() => router.push('/(tabs)/profile')}>
-            <Ionicons name="person" size={24} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-        
-        {isSuperAdmin && (
-          <View style={styles.superAdminBadge}>
-            <Ionicons name="shield-checkmark" size={16} color={colors.warning} />
-            <Text style={styles.superAdminText}>Super Admin</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Suas Empresas</Text>
-        {companies.length > 0 ? (
-          <TouchableOpacity
-            style={styles.companyCard}
-            onPress={() => router.push('/company/select')}
-          >
-            <View style={styles.companyIcon}>
-              <Ionicons name="business" size={24} color={colors.primary} />
-            </View>
-            <View style={styles.companyInfo}>
-              <Text style={styles.companyName}>{companies[0].name}</Text>
-              <Text style={styles.companySlug}>@{companies[0].slug}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.emptyCard}>
-            <Ionicons name="business-outline" size={48} color={colors.textMuted} />
-            <Text style={styles.emptyText}>Nenhuma empresa encontrada</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Resumo</Text>
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: colors.statusOpen }]}>
-            <Ionicons name="alert-circle" size={24} color={colors.text} />
-            <Text style={styles.statNumber}>{openTickets}</Text>
-            <Text style={styles.statLabel}>Abertos</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: colors.statusPending }]}>
-            <Ionicons name="time" size={24} color={colors.text} />
-            <Text style={styles.statNumber}>{pendingTickets}</Text>
-            <Text style={styles.statLabel}>Pendentes</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: colors.success }]}>
-            <Ionicons name="checkmark-circle" size={24} color={colors.text} />
-            <Text style={styles.statNumber}>{recentTickets.filter(t => t.status === 'RESOLVED').length}</Text>
-            <Text style={styles.statLabel}>Resolvidos</Text>
+        <View style={styles.headerLeft}>
+          <KanuxLogo size="sm" showText={false} />
+          <View>
+            <Text style={styles.headerTitle}>Kanux</Text>
+            <Text style={styles.headerSubtitle}>
+              {isSuperAdmin ? 'Super Admin' : (profile?.position || 'Membro')}
+            </Text>
           </View>
         </View>
+        <TouchableOpacity style={styles.headerAvatar} onPress={() => router.push('/(tabs)/profile')}>
+          <Text style={styles.headerAvatarText}>
+            {(profile?.display_name || user?.email || 'U').charAt(0).toUpperCase()}
+          </Text>
+          <View style={styles.onlineIndicator} />
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Acoes Rapidas</Text>
-        <View style={styles.actionsGrid}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push('/tickets/create')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: colors.statusOpen + '30' }]}>
-              <Ionicons name="ticket" size={24} color={colors.statusOpen} />
-            </View>
-            <Text style={styles.actionText}>Novo Ticket</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push('/(tabs)/chats')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: colors.primary + '30' }]}>
-              <Ionicons name="chatbubbles" size={24} color={colors.primary} />
-            </View>
-            <Text style={styles.actionText}>Ver Chats</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push('/company/select')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: colors.info + '30' }]}>
-              <Ionicons name="people" size={24} color={colors.info} />
-            </View>
-            <Text style={styles.actionText}>Empresas</Text>
-          </TouchableOpacity>
-          
-          {isSuperAdmin && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push('/admin')}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: colors.warning + '30' }]}>
-                <Ionicons name="settings" size={24} color={colors.warning} />
-              </View>
-              <Text style={styles.actionText}>Admin</Text>
-            </TouchableOpacity>
-          )}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+      >
+        {/* Greeting */}
+        <View style={styles.greetingSection}>
+          <Text style={styles.greeting}>Olá, {profile?.display_name || user?.email?.split('@')[0] || 'Usuário'}</Text>
+          <Text style={styles.greetingSub}>O que deseja fazer hoje?</Text>
         </View>
-      </View>
 
-      {isSuperAdmin && allCompanies.length > 0 && (
+        {/* Company Selector */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Todas as Empresas ({allCompanies.length})</Text>
+          <Text style={styles.sectionLabel}>
+            {isSuperAdmin ? 'EMPRESAS (TODAS)' : 'SUA EMPRESA'}
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {displayCompanies.map((company) => (
+              <TouchableOpacity
+                key={company.id}
+                style={[styles.companyPill, selectedCompany?.id === company.id && styles.companyPillActive]}
+                onPress={() => handleSelectCompany(company)}
+              >
+                <View style={[styles.companyIcon, selectedCompany?.id === company.id && styles.companyIconActive]}>
+                  <Text style={styles.companyInitial}>{company.name.charAt(0).toUpperCase()}</Text>
+                </View>
+                <Text style={[styles.companyPillText, selectedCompany?.id === company.id && styles.companyPillTextActive]} numberOfLines={1}>
+                  {company.name}
+                </Text>
+                {selectedCompany?.id === company.id && <View style={styles.selectedDot} />}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Stats */}
+        {selectedCompany && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>RESUMO — {selectedCompany.name.toUpperCase()}</Text>
+            <View style={styles.statsRow}>
+              <View style={[styles.statCard, { borderLeftColor: colors.primary }]}>
+                <Ionicons name="alert-circle" size={20} color={colors.primary} />
+                <Text style={styles.statNumber}>{openTickets}</Text>
+                <Text style={styles.statLabel}>Abertos</Text>
+              </View>
+              <View style={[styles.statCard, { borderLeftColor: colors.warning }]}>
+                <Ionicons name="time" size={20} color={colors.warning} />
+                <Text style={styles.statNumber}>{pendingTickets}</Text>
+                <Text style={styles.statLabel}>Pendentes</Text>
+              </View>
+              <View style={[styles.statCard, { borderLeftColor: colors.success }]}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                <Text style={styles.statNumber}>{resolvedTickets}</Text>
+                <Text style={styles.statLabel}>Resolvidos</Text>
+              </View>
+            </View>
           </View>
-          {allCompanies.slice(0, 5).map((company) => (
-            <TouchableOpacity
-              key={company.id}
-              style={styles.companyItem}
-              onPress={() => router.push(`/company/select?companyId=${company.id}`)}
-            >
-              <View style={styles.companyIconSmall}>
-                <Text style={styles.companyInitial}>{company.name.charAt(0).toUpperCase()}</Text>
-              </View>
-              <View style={styles.companyInfo}>
-                <Text style={styles.companyName}>{company.name}</Text>
-                <Text style={styles.companySlug}>@{company.slug}</Text>
-              </View>
+        )}
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>AÇÕES RÁPIDAS</Text>
+          <View style={styles.channelList}>
+            <TouchableOpacity style={styles.channelItem} onPress={() => router.push('/tickets/create')}>
+              <Ionicons name="add-circle" size={20} color={colors.success} />
+              <Text style={styles.channelText}>Abrir Chamado</Text>
               <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
             </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {recentTickets.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Tickets Recentes</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/tickets')}>
-              <Text style={styles.seeAll}>Ver todos</Text>
+            <TouchableOpacity style={styles.channelItem} onPress={() => router.push('/(tabs)/chats')}>
+              <Ionicons name="chatbubbles" size={20} color={colors.primary} />
+              <Text style={styles.channelText}>Ver Chats</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
             </TouchableOpacity>
+            <TouchableOpacity style={styles.channelItem} onPress={() => router.push('/(tabs)/tickets')}>
+              <Ionicons name="ticket" size={20} color={colors.warning} />
+              <Text style={styles.channelText}>Meus Tickets</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+            {isSuperAdmin && (
+              <TouchableOpacity style={styles.channelItem} onPress={() => router.push('/admin')}>
+                <Ionicons name="shield-checkmark" size={20} color={colors.error} />
+                <Text style={styles.channelText}>Painel Admin</Text>
+                <View style={styles.adminBadge}><Text style={styles.adminBadgeText}>ADMIN</Text></View>
+              </TouchableOpacity>
+            )}
           </View>
-          {recentTickets.map((ticket) => (
-            <TouchableOpacity
-              key={ticket.id}
-              style={styles.ticketItem}
-              onPress={() => router.push(`/ticket/${ticket.id}`)}
-            >
-              <View style={styles.ticketInfo}>
-                <Text style={styles.ticketNumber}>#{ticket.number || ticket.id.slice(0, 8)}</Text>
-                <Text style={styles.ticketTitle} numberOfLines={1}>{ticket.title}</Text>
-              </View>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(ticket.status) }]}>
-                <Text style={styles.statusText}>{ticket.status}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
         </View>
-      )}
-    </ScrollView>
+
+        {/* Recent Tickets */}
+        {recentTickets.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>TICKETS RECENTES</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/tickets')}>
+                <Text style={styles.seeAll}>Ver todos</Text>
+              </TouchableOpacity>
+            </View>
+            {recentTickets.map((ticket) => (
+              <TouchableOpacity
+                key={ticket.id}
+                style={styles.ticketItem}
+                onPress={() => router.push(`/ticket/${ticket.id}`)}
+              >
+                <View style={[styles.ticketDot, { backgroundColor: getStatusColor(ticket.status) }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ticketTitle} numberOfLines={1}>{ticket.title}</Text>
+                  <Text style={styles.ticketMeta}>#{ticket.number || ticket.id.slice(0, 8)} · {getStatusLabel(ticket.status)}</Text>
+                </View>
+                <View style={[styles.priorityDot, { backgroundColor: getPriorityColor(ticket.priority) }]} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <View style={{ height: 24 }} />
+      </ScrollView>
+    </View>
   );
 }
 
 function getStatusColor(status: string) {
   switch (status) {
-    case 'OPEN': return colors.statusOpen;
-    case 'PENDING': return colors.statusPending;
+    case 'OPEN': return colors.primary;
+    case 'PENDING': return colors.warning;
     case 'RESOLVED': return colors.success;
     case 'CLOSED': return colors.textMuted;
+    default: return colors.textMuted;
+  }
+}
+function getStatusLabel(status: string) {
+  switch (status) {
+    case 'OPEN': return 'Aberto';
+    case 'PENDING': return 'Pendente';
+    case 'RESOLVED': return 'Resolvido';
+    case 'CLOSED': return 'Fechado';
+    default: return status;
+  }
+}
+function getPriorityColor(priority: string) {
+  switch (priority?.toUpperCase()) {
+    case 'HIGH': return colors.error;
+    case 'MEDIUM': return colors.warning;
+    case 'LOW': return colors.success;
     default: return colors.textMuted;
   }
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md },
-  header: { marginBottom: spacing.lg },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
-  greetingContainer: { flex: 1 },
-  greeting: { fontSize: 22, fontWeight: 'bold', color: colors.text },
-  subtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
-  superAdminBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.warning + '20', paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 20, alignSelf: 'flex-start', marginTop: spacing.md, gap: spacing.xs },
-  superAdminText: { color: colors.warning, fontWeight: '600', fontSize: 12 },
-  section: { marginBottom: spacing.lg },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.md, paddingTop: Platform.OS === 'ios' ? 56 : 12, paddingBottom: 12,
+    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.divider,
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
+  headerSubtitle: { fontSize: 12, color: colors.textMuted },
+  headerAvatar: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerAvatarText: { color: colors.text, fontWeight: '700', fontSize: 16 },
+  onlineIndicator: {
+    position: 'absolute', bottom: -1, right: -1, width: 12, height: 12, borderRadius: 6,
+    backgroundColor: colors.success, borderWidth: 2, borderColor: colors.surface,
+  },
+  content: { paddingBottom: spacing.lg },
+  greetingSection: { padding: spacing.md, paddingTop: spacing.lg },
+  greeting: { fontSize: 22, fontWeight: '700', color: colors.text },
+  greetingSub: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
+  section: { paddingHorizontal: spacing.md, marginTop: spacing.lg },
+  sectionLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.5, marginBottom: spacing.sm, textTransform: 'uppercase' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: spacing.sm },
-  companyCard: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  companyIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: colors.primary + '20', alignItems: 'center', justifyContent: 'center' },
-  companyInfo: { flex: 1 },
-  companyName: { fontSize: 16, fontWeight: '600', color: colors.text },
-  companySlug: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
-  companyItem: { backgroundColor: colors.surface, borderRadius: 8, padding: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
-  companyIconSmall: { width: 36, height: 36, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  companyInitial: { fontSize: 16, fontWeight: 'bold', color: colors.text },
-  emptyCard: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.lg, alignItems: 'center', gap: spacing.sm },
-  emptyText: { color: colors.textSecondary },
+  seeAll: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  companyPill: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    borderRadius: borderRadius.md, paddingVertical: 8, paddingHorizontal: 12,
+    marginRight: spacing.sm, gap: spacing.sm, borderWidth: 1, borderColor: colors.border,
+  },
+  companyPillActive: { backgroundColor: colors.primary + '18', borderColor: colors.primary },
+  companyIcon: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.surfaceLight, alignItems: 'center', justifyContent: 'center' },
+  companyIconActive: { backgroundColor: colors.primary },
+  companyInitial: { color: colors.text, fontWeight: '700', fontSize: 14 },
+  companyPillText: { color: colors.textSecondary, fontSize: 14, fontWeight: '500', maxWidth: 100 },
+  companyPillTextActive: { color: colors.text },
+  selectedDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary, marginLeft: 4 },
   statsRow: { flexDirection: 'row', gap: spacing.sm },
-  statCard: { flex: 1, borderRadius: 12, padding: spacing.md, alignItems: 'center', gap: spacing.xs },
-  statNumber: { fontSize: 24, fontWeight: 'bold', color: colors.text },
-  statLabel: { fontSize: 12, color: colors.text },
-  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  actionButton: { width: '48%', backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md, alignItems: 'center', gap: spacing.sm },
-  actionIcon: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  actionText: { color: colors.text, fontSize: 14, fontWeight: '500' },
-  seeAll: { color: colors.primary, fontSize: 14 },
-  ticketItem: { backgroundColor: colors.surface, borderRadius: 8, padding: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  ticketInfo: { flex: 1 },
-  ticketNumber: { fontSize: 12, color: colors.textSecondary },
-  ticketTitle: { fontSize: 16, color: colors.text, fontWeight: '500', marginTop: 2 },
-  statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: 4, marginLeft: spacing.sm },
-  statusText: { fontSize: 12, color: colors.text, fontWeight: '500' },
+  statCard: { flex: 1, backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md, alignItems: 'center', gap: 4, borderLeftWidth: 3 },
+  statNumber: { fontSize: 22, fontWeight: '700', color: colors.text },
+  statLabel: { fontSize: 11, color: colors.textMuted },
+  channelList: { backgroundColor: colors.surface, borderRadius: borderRadius.sm, overflow: 'hidden' },
+  channelItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: spacing.md, gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  channelText: { flex: 1, fontSize: 15, color: colors.textSecondary, fontWeight: '500' },
+  adminBadge: { backgroundColor: colors.error + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  adminBadgeText: { fontSize: 10, color: colors.error, fontWeight: '700' },
+  ticketItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md, marginBottom: spacing.xs, gap: spacing.sm },
+  ticketDot: { width: 8, height: 8, borderRadius: 4 },
+  ticketTitle: { fontSize: 15, color: colors.text, fontWeight: '500' },
+  ticketMeta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  priorityDot: { width: 10, height: 10, borderRadius: 5 },
 });
 

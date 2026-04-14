@@ -6,7 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 function TabIcon({ name, color, focused }: { name: keyof typeof Ionicons.glyphMap; color: string; focused: boolean }) {
   return (
     <View style={[styles.tabIconContainer, focused && styles.tabIconActive]}>
-      <Ionicons name={name} size={22} color={color} />
+      <Ionicons name={name} size={24} color={color} />
+      {focused && <View style={styles.activeIndicator} />}
     </View>
   );
 }
@@ -15,32 +16,32 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.text,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: colors.backgroundLight,
-          borderTopColor: colors.border,
+          backgroundColor: colors.background,
+          borderTopColor: colors.divider,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-          paddingTop: 8,
+          height: Platform.OS === 'ios' ? 84 : 60,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 6,
+          paddingTop: 6,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '600',
-          marginTop: 2,
+          marginTop: 0,
         },
         headerStyle: {
-          backgroundColor: colors.background,
+          backgroundColor: colors.surface,
           elevation: 0,
           shadowOpacity: 0,
           borderBottomWidth: 1,
-          borderBottomColor: colors.border,
+          borderBottomColor: colors.divider,
         },
         headerTintColor: colors.text,
         headerTitleStyle: {
           fontWeight: '700',
-          fontSize: 18,
+          fontSize: 17,
         },
       }}
     >
@@ -48,6 +49,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Início',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name={focused ? 'home' : 'home-outline'} color={color} focused={focused} />
           ),
@@ -66,6 +68,7 @@ export default function TabLayout() {
         name="tickets"
         options={{
           title: 'Tickets',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name={focused ? 'ticket' : 'ticket-outline'} color={color} focused={focused} />
           ),
@@ -88,11 +91,19 @@ const styles = StyleSheet.create({
   tabIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 36,
-    height: 28,
-    borderRadius: 14,
+    width: 40,
+    height: 32,
+    borderRadius: 8,
   },
   tabIconActive: {
-    backgroundColor: colors.primary + '20',
+    backgroundColor: colors.primary + '18',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    bottom: -4,
+    width: 16,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: colors.primary,
   },
 });

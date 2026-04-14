@@ -3,9 +3,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { getUserCompanies, createTicket, Company } from '../../src/lib/supabase';
+import { getUserCompanies, createTicket, Company, getDepartments, Department, getCompanyMembers, Profile } from '../../src/lib/supabase';
 import { getUserCompany, saveUserCompany } from '../../src/lib/offlineStorage';
-import { colors, spacing } from '../../src/theme';
+import { colors, spacing, borderRadius } from '../../src/theme';
 
 export default function CreateTicketScreen() {
   const { profile } = useAuth();
@@ -16,6 +16,10 @@ export default function CreateTicketScreen() {
   const [loading, setLoading] = useState(false);
   const [companyId, setCompanyId] = useState<string>('');
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
+  const [members, setMembers] = useState<Profile[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [loadingCompany, setLoadingCompany] = useState(true);
 
   useEffect(() => {
@@ -23,102 +27,111 @@ export default function CreateTicketScreen() {
       try {
         const companiesData = await getUserCompanies();
         setCompanies(companiesData);
-        // Use saved company or first
         const savedId = await getUserCompany();
         const valid = companiesData.find(c => c.id === savedId);
         const activeId = valid ? savedId! : companiesData[0]?.id || '';
         setCompanyId(activeId);
         if (activeId && !valid) await saveUserCompany(activeId);
+        if (activeId) {
+          const [depts, mems] = await Promise.all([
+            getDepartments(activeId),
+            getCompanyMembers(activeId),
+          ]);
+          setDepartments(depts);
+          setMembers(mems);
+        }
       } catch (error) {
-        console.error('Error loading companies for ticket creation:', error);
+        console.error('Error loading data for ticket creation:', error);
       } finally {
         setLoadingCompany(false);
       }
     })();
   }, []);
 
-  async function handleCreate() {
-    if (!title.trim()) {
-      Alert.alert('Erro', 'Por favor, insira um título');
-      return;
-    }
+  async function handleCompanyChange(cId: string) {
+    setCompanyId(cId);
+    setSelectedDepartmentId('');
+    setSelectedUserId('');
+    await saveUserCompany(cId);
+    try {
+      const [depts, mems] = await Promise.all([
+        getDepartments(cId),
+        getCompanyMembers(cId),
+      ]);
+      setDepartments(depts);
+      setMembers(mems);
+    } catch {}
+  }
 
-    if (!companyId) {
-      Alert.alert('Erro', 'Nenhuma empresa encontrada. Entre em contato com o administrador.');
-      return;
-    }
+  async function handleCreate() {
+    if (!title.trim()) { Alert.alert('Erro', 'Informe o título do chamado'); return; }
+    if (!companyId) { Alert.alert('Erro', 'Nenhuma empresa encontrada'); return; }
+    if (!selectedDepartmentId) { Alert.alert('Erro', 'Selecione o departamento (obrigatório)'); return; }
 
     setLoading(true);
     try {
-      const ticket = await createTicket(
-        companyId,
-        title.trim(),
-        description.trim(),
-        priority
-      );
-
+      const ticket = await createTicket(companyId, title.trim(), description.trim(), priority);
       if (ticket) {
-        Alert.alert('Sucesso', 'Ticket criado com sucesso!', [
-          { text: 'OK', onPress: () => router.back() }
-        ]);
+        Alert.alert('Sucesso', 'Chamado criado com sucesso!', [{ text: 'OK', onPress: () => router.back() }]);
       }
     } catch (error) {
       console.error('Error creating ticket:', error);
-      Alert.alert('Erro', 'Falha ao criar ticket');
+      Alert.alert('Erro', 'Falha ao criar chamado');
     } finally {
       setLoading(false);
     }
   }
 
   const priorities = [
-    { value: 'LOW', label: 'Baixa', color: colors.priorityLow },
-    { value: 'MEDIUM', label: 'Média', color: colors.priorityMedium },
-    { value: 'HIGH', label: 'Alta', color: colors.priorityHigh },
+    { value: 'LOW', label: 'Baixa', color: colors.priorityLow, icon: 'arrow-down' as const },
+    { value: 'MEDIUM', label: 'Média', color: colors.priorityMedium, icon: 'remove' as const },
+    { value: 'HIGH', label: 'Alta', color: colors.priorityHigh, icon: 'arrow-up' as const },
   ];
+
+  // Filter manager/admin members for targeting
+  const targetMembers = members.filter(m => {
+    // Show all members for targeting
+    return true;
+  });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.form}>
+
         {/* Company Selector */}
         {companies.length > 1 && (
           <>
-            <Text style={styles.label}>Empresa</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.companyScroll}>
+            <Text style={styles.label}>EMPRESA</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
               {companies.map((c) => (
                 <TouchableOpacity
                   key={c.id}
-                  style={[
-                    styles.companyChip,
-                    companyId === c.id && styles.companyChipActive,
-                  ]}
-                  onPress={() => setCompanyId(c.id)}
+                  style={[styles.chip, companyId === c.id && styles.chipActive]}
+                  onPress={() => handleCompanyChange(c.id)}
                 >
-                  <Text style={[
-                    styles.companyChipText,
-                    companyId === c.id && styles.companyChipTextActive,
-                  ]}>
-                    {c.name}
-                  </Text>
+                  <Text style={[styles.chipText, companyId === c.id && styles.chipTextActive]}>{c.name}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </>
         )}
 
-        <Text style={styles.label}>Título *</Text>
+        {/* Title */}
+        <Text style={styles.label}>TÍTULO *</Text>
         <TextInput
           style={styles.input}
-          placeholder="Digite o título do ticket"
+          placeholder="Descreva o problema brevemente"
           placeholderTextColor={colors.textMuted}
           value={title}
           onChangeText={setTitle}
           maxLength={200}
         />
 
-        <Text style={styles.label}>Descrição</Text>
+        {/* Description */}
+        <Text style={styles.label}>DESCRIÇÃO</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Descreva o problema ou solicitação"
+          placeholder="Detalhes adicionais sobre o problema..."
           placeholderTextColor={colors.textMuted}
           value={description}
           onChangeText={setDescription}
@@ -127,37 +140,99 @@ export default function CreateTicketScreen() {
           textAlignVertical="top"
         />
 
-        <Text style={styles.label}>Prioridade</Text>
-        <View style={styles.priorityContainer}>
-          {priorities.map((p) => (
+        {/* Department - REQUIRED */}
+        <Text style={styles.label}>
+          DEPARTAMENTO * <Text style={styles.requiredNote}>(obrigatório)</Text>
+        </Text>
+        <View style={styles.optionsList}>
+          {departments.length === 0 && (
+            <Text style={styles.emptyHint}>Nenhum departamento disponível</Text>
+          )}
+          {departments.map(dept => (
             <TouchableOpacity
-              key={p.value}
-              style={[
-                styles.priorityButton,
-                priority === p.value && { backgroundColor: p.color },
-              ]}
-              onPress={() => setPriority(p.value as 'LOW' | 'MEDIUM' | 'HIGH')}
+              key={dept.id}
+              style={[styles.optionItem, selectedDepartmentId === dept.id && styles.optionItemActive]}
+              onPress={() => setSelectedDepartmentId(dept.id)}
             >
-              <Text
-                style={[
-                  styles.priorityText,
-                  priority === p.value && styles.priorityTextActive,
-                ]}
-              >
-                {p.label}
+              <Ionicons
+                name="folder"
+                size={18}
+                color={selectedDepartmentId === dept.id ? colors.primary : colors.textMuted}
+              />
+              <Text style={[styles.optionText, selectedDepartmentId === dept.id && styles.optionTextActive]}>
+                {dept.name}
               </Text>
+              {selectedDepartmentId === dept.id && (
+                <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+              )}
             </TouchableOpacity>
           ))}
         </View>
 
+        {/* User Target - OPTIONAL */}
+        <Text style={styles.label}>
+          DIRECIONAR PARA USUÁRIO <Text style={styles.optionalNote}>(opcional)</Text>
+        </Text>
+        <View style={styles.optionsList}>
+          <TouchableOpacity
+            style={[styles.optionItem, !selectedUserId && styles.optionItemActive]}
+            onPress={() => setSelectedUserId('')}
+          >
+            <Ionicons name="people" size={18} color={!selectedUserId ? colors.primary : colors.textMuted} />
+            <Text style={[styles.optionText, !selectedUserId && styles.optionTextActive]}>Qualquer atendente</Text>
+            {!selectedUserId && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
+          </TouchableOpacity>
+          {targetMembers.map(member => (
+            <TouchableOpacity
+              key={member.id}
+              style={[styles.optionItem, selectedUserId === member.id && styles.optionItemActive]}
+              onPress={() => setSelectedUserId(member.id)}
+            >
+              <View style={styles.memberAvatar}>
+                <Text style={styles.memberAvatarText}>
+                  {(member.display_name || 'U').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.optionText, selectedUserId === member.id && styles.optionTextActive]}>
+                  {member.display_name || 'Sem nome'}
+                </Text>
+                {member.position && <Text style={styles.memberPosition}>{member.position}</Text>}
+              </View>
+              {selectedUserId === member.id && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Priority */}
+        <Text style={styles.label}>PRIORIDADE</Text>
+        <View style={styles.priorityContainer}>
+          {priorities.map((p) => (
+            <TouchableOpacity
+              key={p.value}
+              style={[styles.priorityButton, priority === p.value && { backgroundColor: p.color, borderColor: p.color }]}
+              onPress={() => setPriority(p.value as 'LOW' | 'MEDIUM' | 'HIGH')}
+            >
+              <Ionicons name={p.icon} size={16} color={priority === p.value ? colors.text : p.color} />
+              <Text style={[styles.priorityText, priority === p.value && styles.priorityTextActive]}>{p.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Submit */}
         <TouchableOpacity
           style={[styles.submitButton, loading && styles.submitButtonDisabled]}
           onPress={handleCreate}
           disabled={loading}
         >
-          <Text style={styles.submitButtonText}>
-            {loading ? 'Criando...' : 'Criar Ticket'}
-          </Text>
+          {loading ? (
+            <ActivityIndicator color={colors.text} />
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="send" size={18} color={colors.text} />
+              <Text style={styles.submitButtonText}>Abrir Chamado</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -165,94 +240,64 @@ export default function CreateTicketScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.md,
-  },
-  form: {
-    flex: 1,
-  },
-  companyScroll: {
-    marginBottom: spacing.sm,
-  },
-  companyChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginRight: spacing.sm,
-  },
-  companyChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  companyChipText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  companyChipTextActive: {
-    color: colors.text,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing.md, paddingBottom: spacing.xxl },
+  form: { flex: 1 },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.sm,
-    marginTop: spacing.md,
+    fontSize: 11, fontWeight: '700', color: colors.textMuted,
+    letterSpacing: 0.5, marginBottom: spacing.sm, marginTop: spacing.lg,
+    textTransform: 'uppercase',
   },
+  requiredNote: { color: colors.error, fontSize: 10, fontWeight: '600' },
+  optionalNote: { color: colors.textMuted, fontSize: 10, fontWeight: '500' },
   input: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: spacing.md,
-    color: colors.text,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surface, borderRadius: borderRadius.sm,
+    padding: spacing.md, color: colors.text, fontSize: 15,
+    borderWidth: 1, borderColor: colors.border,
   },
-  textArea: {
-    minHeight: 120,
-    textAlignVertical: 'top',
+  textArea: { minHeight: 100, textAlignVertical: 'top' },
+  chipScroll: { marginBottom: spacing.xs },
+  chip: {
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, marginRight: spacing.sm,
   },
-  priorityContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+  chipActive: { backgroundColor: colors.primary + '18', borderColor: colors.primary },
+  chipText: { color: colors.textSecondary, fontSize: 14, fontWeight: '500' },
+  chipTextActive: { color: colors.text },
+  optionsList: {
+    backgroundColor: colors.surface, borderRadius: borderRadius.sm,
+    overflow: 'hidden',
   },
+  optionItem: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 12, paddingHorizontal: spacing.md,
+    gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider,
+  },
+  optionItemActive: { backgroundColor: colors.primary + '12' },
+  optionText: { flex: 1, fontSize: 15, color: colors.textSecondary, fontWeight: '500' },
+  optionTextActive: { color: colors.text },
+  emptyHint: { padding: spacing.md, color: colors.textMuted, fontSize: 14, textAlign: 'center' },
+  memberAvatar: {
+    width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  memberAvatarText: { color: colors.text, fontWeight: '700', fontSize: 12 },
+  memberPosition: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
+  priorityContainer: { flexDirection: 'row', gap: spacing.sm },
   priorityButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    flex: 1, paddingVertical: 12, borderRadius: borderRadius.sm,
+    backgroundColor: colors.surface, alignItems: 'center',
+    borderWidth: 1, borderColor: colors.border,
+    flexDirection: 'row', justifyContent: 'center', gap: 6,
   },
-  priorityText: {
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  priorityTextActive: {
-    color: colors.text,
-  },
+  priorityText: { color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
+  priorityTextActive: { color: colors.text },
   submitButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginTop: spacing.xl,
+    backgroundColor: colors.primary, borderRadius: borderRadius.sm,
+    padding: spacing.md, alignItems: 'center', marginTop: spacing.xl,
   },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  submitButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  submitButtonDisabled: { opacity: 0.5 },
+  submitButtonText: { color: colors.text, fontSize: 16, fontWeight: '600' },
 });
 

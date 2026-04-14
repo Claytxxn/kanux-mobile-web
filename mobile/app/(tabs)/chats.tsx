@@ -121,19 +121,16 @@ export default function ChatsScreen() {
             style={styles.chatItem}
             onPress={() => router.push(`/chat/${item.id}`)}
           >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {item.name.charAt(0).toUpperCase()}
-              </Text>
+            <View style={styles.chatIconContainer}>
+              {item.is_private ? (
+                <Ionicons name="lock-closed" size={18} color={colors.textMuted} />
+              ) : (
+                <Text style={styles.hashIcon}>#</Text>
+              )}
             </View>
             <View style={styles.chatInfo}>
               <Text style={styles.chatName}>{item.name}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                {item.is_private && (
-                  <View style={styles.privateBadge}>
-                    <Text style={styles.privateText}>Privado</Text>
-                  </View>
-                )}
                 {item.department && (
                   <View style={styles.deptBadge}>
                     <Text style={styles.deptBadgeText}>{item.department.name}</Text>
@@ -141,7 +138,7 @@ export default function ChatsScreen() {
                 )}
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         )}
         ListEmptyComponent={
@@ -256,46 +253,33 @@ const styles = StyleSheet.create({
   },
   chatItem: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 8,
     padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary,
+  chatIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: 'bold',
+  hashIcon: {
+    color: colors.textMuted,
+    fontSize: 18,
+    fontWeight: '700',
   },
   chatInfo: {
     flex: 1,
     marginLeft: spacing.md,
   },
   chatName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: colors.text,
-  },
-  privateBadge: {
-    backgroundColor: colors.warning + '20',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  privateText: {
-    fontSize: 10,
-    color: colors.warning,
-    fontWeight: '600',
   },
   empty: {
     alignItems: 'center',

@@ -164,13 +164,20 @@ export default function ChatScreen() {
             <Text style={styles.emptySubtext}>Envie uma mensagem para começar a conversa</Text>
           </View>
         )}
-        {messages.map((item) => {
+        {messages.map((item, index) => {
           const isMyMessage = item.user_profile_id === user?.id;
+          const senderName = item.display_name || item.user_display_name || chatMembers.find(m => m.user_profile_id === item.user_profile_id)?.user_profile?.display_name || 'Usuário';
+          // Show sender name if it's a different user's message and previous message was from a different sender
+          const prevMsg = index > 0 ? messages[index - 1] : null;
+          const showSender = !isMyMessage && (!prevMsg || prevMsg.user_profile_id !== item.user_profile_id);
           return (
             <View 
               key={item.id}
               style={[styles.messageBubble, isMyMessage ? styles.myMessage : styles.otherMessage]}
             >
+              {showSender && (
+                <Text style={styles.senderName}>{senderName}</Text>
+              )}
               <Text style={styles.messageText}>{item.content}</Text>
               <Text style={styles.messageTime}>
                 {new Date(item.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -335,7 +342,13 @@ const styles = StyleSheet.create({
   },
   messageText: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 15,
+  },
+  senderName: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 2,
   },
   messageTime: {
     color: colors.textMuted,

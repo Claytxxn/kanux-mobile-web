@@ -1,55 +1,63 @@
-// Theme colors for the app - Modern Violet/Purple Theme (based on academy-chan)
+// Theme colors for the app - Discord-inspired Dark Theme
 export const colors = {
-  // Primary colors - Violet/Purple Modern
-  primary: '#8B5CF6',
-  primaryDark: '#7C3AED',
-  primaryLight: '#A78BFA',
-  primaryMuted: '#C4B5FD',
+  // Primary colors - Discord Blurple
+  primary: '#5865F2',
+  primaryDark: '#4752C4',
+  primaryLight: '#7289DA',
+  primaryMuted: '#9BA4D4',
 
-  // Background colors - Dark Premium
-  background: '#09090B',
-  backgroundLight: '#18181B',
-  surface: '#27272A',
-  surfaceLight: '#3F3F46',
+  // Background colors - Discord Dark
+  background: '#1E1F22',
+  backgroundLight: '#2B2D31',
+  surface: '#313338',
+  surfaceLight: '#383A40',
 
   // Text colors
-  text: '#FAFAFA',
-  textSecondary: '#A1A1AA',
-  textMuted: '#71717A',
+  text: '#F2F3F5',
+  textSecondary: '#B5BAC1',
+  textMuted: '#80848E',
 
   // Status colors
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#3B82F6',
+  success: '#23A559',
+  warning: '#F0B232',
+  error: '#ED4245',
+  info: '#5865F2',
 
   // Priority colors
-  priorityHigh: '#EF4444',
-  priorityMedium: '#F59E0B',
-  priorityLow: '#10B981',
+  priorityHigh: '#ED4245',
+  priorityMedium: '#F0B232',
+  priorityLow: '#23A559',
 
   // Status ticket colors
-  statusOpen: '#8B5CF6',
-  statusPending: '#F59E0B',
-  statusResolved: '#10B981',
-  statusClosed: '#64748B',
+  statusOpen: '#5865F2',
+  statusPending: '#F0B232',
+  statusResolved: '#23A559',
+  statusClosed: '#80848E',
 
   // Brand colors
-  brand: '#8B5CF6',
-  brandDark: '#7C3AED',
-  brandLight: '#D1FAE5',
+  brand: '#5865F2',
+  brandDark: '#4752C4',
+  brandLight: '#A5B1F5',
 
   // Other
-  border: '#3F3F46',
-  borderLight: '#52525B',
-  divider: '#27272A',
-  overlay: 'rgba(0, 0, 0, 0.75)',
+  border: '#3F4147',
+  borderLight: '#4E5058',
+  divider: '#35373C',
+  overlay: 'rgba(0, 0, 0, 0.85)',
+
+  // Discord-specific
+  mention: '#5865F220',
+  channelIcon: '#80848E',
+  online: '#23A559',
+  idle: '#F0B232',
+  dnd: '#ED4245',
+  offline: '#80848E',
 
   // Legacy compatibility
   white: '#ffffff',
   black: '#000000',
-  gray: '#64748b',
-  lightGray: '#94a3b8',
+  gray: '#80848E',
+  lightGray: '#B5BAC1',
 };
 
 export const spacing = {
@@ -62,6 +70,7 @@ export const spacing = {
 };
 
 export const borderRadius = {
+  xs: 4,
   sm: 8,
   md: 12,
   lg: 16,
@@ -90,20 +99,20 @@ export const fontWeight = {
 export const shadows = {
   card: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
   },
   floating: {
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 10 },
+    shadowColor: '#5865F2',
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 12,
+    shadowRadius: 12,
+    elevation: 10,
   },
   brand: {
-    shadowColor: '#8B5CF6',
+    shadowColor: '#5865F2',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,

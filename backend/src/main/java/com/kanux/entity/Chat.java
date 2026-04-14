@@ -34,6 +34,9 @@ public class Chat {
     @Column(name = "is_private", nullable = false)
     private boolean privateChat = false;
 
+    @Column(name = "only_admins_send", nullable = false)
+    private boolean onlyAdminsSend = false;
+
     @Column(name = "created_by")
     private UUID createdBy;
 
