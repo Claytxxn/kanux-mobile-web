@@ -98,6 +98,17 @@ export default function ChatScreen() {
     return chatMembers.some(cm => cm.user_profile_id === userProfileId);
   }
 
+  // Verificar se o usuário pode enviar mensagens
+  const canSendMessage = (() => {
+    if (!chatInfo) return true; // permitir enquanto carrega
+    if (!(chatInfo as any).only_admins_send) return true; // sem restrição
+    if (profile?.is_super_admin) return true;
+    // Verificar role no chat ou na company
+    const myMembership = chatMembers.find(m => m.user_profile_id === profile?.id);
+    if (myMembership?.role === 'ADMIN' || myMembership?.role === 'MANAGER') return true;
+    return false;
+  })();
+
   // Status de digitação
   useEffect(() => {
     if (!id) return;
@@ -196,28 +207,37 @@ export default function ChatScreen() {
       </ScrollView>
 
       <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Digite sua mensagem..."
-          placeholderTextColor={colors.textMuted}
-          value={newMessage}
-          onChangeText={(text) => {
-            setNewMessage(text);
-            if (!id) return;
-            try { setChatTyping(id as string, true); } catch (e) { }
-            if (typingTimer.current) clearTimeout(typingTimer.current);
-            typingTimer.current = setTimeout(() => { try { setChatTyping(id as string, false); } catch (e) {} }, 1500);
-          }}
-          multiline
-          maxLength={1000}
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, (!newMessage.trim() || sending) && styles.sendButtonDisabled]}
-          onPress={handleSend}
-          disabled={!newMessage.trim() || sending}
-        >
-          <Text style={styles.sendButtonText}>Enviar</Text>
-        </TouchableOpacity>
+        {canSendMessage ? (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Digite sua mensagem..."
+              placeholderTextColor={colors.textMuted}
+              value={newMessage}
+              onChangeText={(text) => {
+                setNewMessage(text);
+                if (!id) return;
+                try { setChatTyping(id as string, true); } catch (e) { }
+                if (typingTimer.current) clearTimeout(typingTimer.current);
+                typingTimer.current = setTimeout(() => { try { setChatTyping(id as string, false); } catch (e) {} }, 1500);
+              }}
+              multiline
+              maxLength={1000}
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, (!newMessage.trim() || sending) && styles.sendButtonDisabled]}
+              onPress={handleSend}
+              disabled={!newMessage.trim() || sending}
+            >
+              <Text style={styles.sendButtonText}>Enviar</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <View style={styles.blockedInput}>
+            <Ionicons name="lock-closed" size={16} color={colors.textMuted} />
+            <Text style={styles.blockedText}>Apenas admins e managers podem enviar mensagens</Text>
+          </View>
+        )}
       </View>
 
       {/* Modal de Membros */}
@@ -403,6 +423,18 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: colors.text,
     fontWeight: '600',
+  },
+  blockedInput: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: spacing.sm,
+  },
+  blockedText: {
+    color: colors.textMuted,
+    fontSize: 14,
   },
   pendingText: {
     color: colors.textMuted,

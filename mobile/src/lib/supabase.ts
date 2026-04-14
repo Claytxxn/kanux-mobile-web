@@ -57,6 +57,7 @@ export type Chat = {
   department_id: string | null;
   name: string;
   is_private: boolean;
+  only_admins_send: boolean;
   created_by: string | null;
   created_at: string;
 };

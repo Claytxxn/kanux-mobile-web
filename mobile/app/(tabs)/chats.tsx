@@ -59,8 +59,9 @@ export default function ChatsScreen() {
   }
 
   useEffect(() => {
+    if (!user || !profile) { setLoading(false); return; }
     loadData();
-  }, [profile]);
+  }, [user, profile]);
 
   async function handleCreateChat() {
     if (!newChatName.trim()) {

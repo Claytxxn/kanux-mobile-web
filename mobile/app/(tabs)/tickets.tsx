@@ -65,12 +65,13 @@ export default function TicketsScreen() {
 
   // Carregar ao montar
   useEffect(() => {
+    if (!profile) { setLoading(false); return; }
     (async () => {
       const id = await loadCompanies();
       if (id) await loadTickets(id);
       else setLoading(false);
     })();
-  }, []);
+  }, [profile]);
 
   // Recarregar chamados quando a aba recebe foco
   useFocusEffect(

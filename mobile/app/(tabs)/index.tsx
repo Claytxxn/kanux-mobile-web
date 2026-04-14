@@ -52,9 +52,15 @@ export default function HomeScreen() {
     }
   }
 
-  useEffect(() => { loadData(); }, [profile?.is_super_admin]);
+  useEffect(() => {
+    if (!user || !profile) { setLoading(false); return; }
+    loadData();
+  }, [user, profile?.is_super_admin]);
 
-  function onRefresh() { setRefreshing(true); loadData(); }
+  function onRefresh() {
+    if (!user || !profile) return;
+    setRefreshing(true); loadData();
+  }
 
   async function handleSelectCompany(company: Company) {
     setSelectedCompany(company);
