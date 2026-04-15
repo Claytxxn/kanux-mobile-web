@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -33,6 +34,7 @@ public class UserProfile {
     private String position;
     private String department;
 
+    @JsonProperty("is_super_admin")
     @Column(name = "is_super_admin", nullable = false)
     private boolean superAdmin = false;
 
