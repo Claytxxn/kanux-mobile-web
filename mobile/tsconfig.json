@@ -21,7 +21,8 @@
     },
     "module": "esnext",
     "target": "esnext",
-    "rootDir": "."
+    "rootDir": ".",
+    "disableReferencedProjectLoad": true
   },
   "include": [
     "**/*.ts",
