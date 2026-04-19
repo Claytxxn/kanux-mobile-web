@@ -44,7 +44,7 @@ public class ChatController {
     private final MessageRepository messageRepository;
     private final UserProfileRepository userProfileRepository;
 
-    // chatId -> (userId -> lastTypingTimestampMillis)
+    // chatId -> (userId -> timestamp da última digitação em ms)
     private final Map<UUID, Map<UUID, Long>> typingMap = new ConcurrentHashMap<>();
 
     public ChatController(ChatRepository chatRepository, ChatMemberRepository chatMemberRepository,
@@ -90,7 +90,7 @@ public class ChatController {
         chat.setCreatedBy(p.getId());
         Chat savedChat = chatRepository.save(chat);
 
-        // Auto-add creator as ADMIN member of the chat
+        // Adiciona automaticamente o criador como membro ADMIN do chat
         ChatMember creatorMember = new ChatMember();
         creatorMember.setChatId(savedChat.getId());
         creatorMember.setUserProfileId(p.getId());
@@ -183,7 +183,7 @@ public class ChatController {
 
         Map<UUID, Long> m = typingMap.getOrDefault(cId, new HashMap<>());
         long now = System.currentTimeMillis();
-        long ttl = 5000; // consider typing active if updated within last 5s
+        long ttl = 5000; // considera digitação ativa se atualizada nos últimos 5 segundos
 
         List<Map<String, Object>> result = m.entrySet().stream()
                 .filter(e -> now - e.getValue() <= ttl && !e.getKey().equals(p.getId()))
@@ -217,6 +217,7 @@ public class ChatController {
                     if (cm.getUserProfile() != null) {
                         Map<String, Object> up = new LinkedHashMap<>();
                         up.put("id", cm.getUserProfile().getId());
+
                         up.put("display_name", cm.getUserProfile().getDisplayName());
                         up.put("email", cm.getUserProfile().getEmail());
                         up.put("avatar_url", cm.getUserProfile().getAvatarUrl());
@@ -276,7 +277,7 @@ public class ChatController {
         map.put("attachments", m.getAttachments()); map.put("created_at", m.getCreatedAt());
         map.put("updated_at", m.getUpdatedAt());
 
-        // Include user profile info for display
+        // Inclui informações do perfil do usuário para exibição
         if (m.getUserProfileId() != null) {
             UUID profileId = m.getUserProfileId();
             userProfileRepository.findById(profileId).ifPresent(up -> {

@@ -64,6 +64,7 @@ public class AdminController {
     }
 
     @GetMapping("/companies")
+    @SuppressWarnings("null")
     public ResponseEntity<ApiResponse<List<Company>>> getAllCompanies(@AuthenticationPrincipal UserProfile p) {
         if (!isAdminOrAbove(p)) return forbidden();
         if (p.isSuperAdmin()) {
@@ -72,7 +73,7 @@ public class AdminController {
                             .sorted(Comparator.comparing(Company::getCreatedAt).reversed())
                             .collect(Collectors.toList())));
         }
-        // ADMIN users only see companies they're members of
+        // Usuários ADMIN só vêem as empresas das quais são membros
         List<UUID> companyIds = memberRepository.findByUserProfileId(p.getId()).stream()
                 .map(CompanyMember::getCompanyId).collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.ok(
@@ -82,6 +83,7 @@ public class AdminController {
     }
 
     @DeleteMapping("/company")
+    @SuppressWarnings("null")
     public ResponseEntity<ApiResponse<Void>> deleteCompany(@AuthenticationPrincipal UserProfile p, @RequestParam String id) {
         if (!isSuperAdmin(p)) return forbidden();
         if (id != null) {
@@ -131,6 +133,7 @@ public class AdminController {
     }
 
     @PutMapping("/members")
+    @SuppressWarnings("null")
     public ResponseEntity<ApiResponse<CompanyMember>> updateMember(
             @AuthenticationPrincipal UserProfile p, @RequestBody UpdateMemberRequest req) {
         if (!isAdminOrAbove(p)) return forbidden();
@@ -141,6 +144,7 @@ public class AdminController {
     }
 
     @DeleteMapping("/members")
+    @SuppressWarnings("null")
     public ResponseEntity<ApiResponse<Void>> removeMember(@AuthenticationPrincipal UserProfile p, @RequestParam String id) {
         if (!isAdminOrAbove(p)) return forbidden();
         memberRepository.deleteById(UUID.fromString(id));
@@ -249,12 +253,12 @@ public class AdminController {
             HttpHeaders headers = buildSupabaseHeaders();
             RestTemplate rest = new RestTemplate();
 
-            // Check if user already exists in Supabase Auth
+            // Verifica se o usuário já existe no Supabase Auth
             UUID existingAuthId = findSupabaseAuthUserByEmail(rest, headers, email);
             if (existingAuthId != null) {
                 authUserId = existingAuthId;
                 log.info("[createUser] Usuário já existe no Supabase Auth id={}, atualizando senha", authUserId);
-                // Update -password for existing auth user
+                // Atualiza a senha do usuário existente
                 updateSupabaseAuthUser(rest, headers, authUserId, password, displayName);
             } else {
                 log.info("[createUser] Usuário não encontrado no Supabase Auth, criando novo");
@@ -262,7 +266,7 @@ public class AdminController {
                 log.info("[createUser] Usuário criado no Supabase Auth id={}", authUserId);
             }
 
-            // 2. Create or find user profile
+            // 2. Cria ou localiza o perfil do usuário
             UserProfile profile;
             Optional<UserProfile> existing = userProfileRepository.findByEmail(email);
             if (existing.isPresent()) {
@@ -281,7 +285,7 @@ public class AdminController {
                 profile = userProfileRepository.save(profile);
             }
 
-            // 3. Add to company
+            // 3. Adiciona o usuário à empresa
             UUID cId = UUID.fromString(companyId);
             if (!memberRepository.existsByCompanyIdAndUserProfileId(cId, profile.getId())) {
                 CompanyMember cm = new CompanyMember();
@@ -294,7 +298,7 @@ public class AdminController {
                 }
                 memberRepository.save(cm);
             } else {
-                // Update screen_permissions on existing membership
+                // Atualiza as permissões de tela no vínculo existente
                 String screenPermissions = body.get("screen_permissions");
                 if (screenPermissions != null && !screenPermissions.isBlank()) {
                     memberRepository.findByCompanyIdAndUserProfileId(cId, profile.getId())
@@ -323,7 +327,7 @@ public class AdminController {
 
     // ── Editar Usuário ───────────────────────────────────────────────────────
     @PutMapping("/users/{profileId}")
-    @SuppressWarnings("UseSpecificCatch")
+    @SuppressWarnings({"UseSpecificCatch", "null"})
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateUser(
             @AuthenticationPrincipal UserProfile p,
             @PathVariable String profileId,
@@ -331,7 +335,7 @@ public class AdminController {
         if (!isAdminOrAbove(p)) return forbidden();
 
         return userProfileRepository.findById(UUID.fromString(profileId)).map(profile -> {
-            // Update basic fields
+            // Atualiza os campos básicos do perfil
             if (body.containsKey("display_name")) profile.setDisplayName(body.get("display_name"));
             if (body.containsKey("email")) profile.setEmail(body.get("email"));
             if (body.containsKey("position")) profile.setPosition(body.get("position"));
@@ -340,7 +344,7 @@ public class AdminController {
             if (body.containsKey("is_super_admin")) profile.setSuperAdmin("true".equals(body.get("is_super_admin")));
             userProfileRepository.save(profile);
 
-            // Update role in company if provided
+            // Atualiza a função na empresa, se informada
             if (body.containsKey("role") && body.containsKey("company_id")) {
                 UUID companyId = UUID.fromString(body.get("company_id"));
                 memberRepository.findByCompanyIdAndUserProfileId(companyId, profile.getId())
@@ -353,7 +357,7 @@ public class AdminController {
                         });
             }
 
-            // Reset password in Supabase Auth if provided
+            // Redefine a senha no Supabase Auth, se informada
             if (body.containsKey("password") && !body.get("password").isBlank()) {
                 String newPassword = body.get("password");
                 if (newPassword.length() < 6) {
@@ -406,7 +410,7 @@ public class AdminController {
         return headers;
     }
 
-    @SuppressWarnings({"unchecked", "UseSpecificCatch"})
+    @SuppressWarnings({"unchecked", "UseSpecificCatch", "null"})
     private UUID findSupabaseAuthUserByEmail(RestTemplate rest, HttpHeaders headers, String email) {
         try {
             HttpEntity<Void> entity = new HttpEntity<>(headers);

@@ -110,13 +110,13 @@ export default function AdminScreen() {
       if (res?.data?.is_super_admin || res?.data?.superAdmin) {
         setIsSuperAdminUser(true);
       } else {
-        // Also allow ADMIN role users in any company
+        // Permitir também usuários com função ADMIN em qualquer empresa
         try {
           const companiesRes = await api.getAllCompanies();
           if (companiesRes?.data?.length > 0) {
-            setIsSuperAdminUser(true); // If getAllCompanies returns data, they have admin API access
+            setIsSuperAdminUser(true); // Se getAllCompanies retornou dados, o usuário tem acesso à API admin
           } else {
-            // Check membership role in user's companies
+            // Verificar a função do usuário nas suas empresas
             const userCompanies = await api.getCompanies();
             const companyList = userCompanies?.data || [];
             for (const c of companyList) {
@@ -405,7 +405,7 @@ export default function AdminScreen() {
     { key: 'permissions', icon: 'shield-checkmark' as const, label: 'Perms' },
   ];
 
-  // Members NOT yet in selected chat
+  // Membros que ainda não estão no chat selecionado
   const chatMemberIds = new Set(chatMembers.map(m => m.user_profile_id));
   const membersNotInChat = members.filter(m => !chatMemberIds.has(m.user_profile_id));
 
@@ -1059,15 +1059,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary, paddingHorizontal: 10, paddingVertical: 5, borderRadius: borderRadius.sm,
   },
   addButtonText: { color: colors.text, fontSize: 12, fontWeight: '700' },
-  // Stats
+  // Estatísticas
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.sm },
   statCard: { width: '48%', backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md, alignItems: 'center', gap: 4 },
   statCard2: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md },
   statNumber: { fontSize: 22, fontWeight: '700', color: colors.text },
   statNumber2: { fontSize: 15, fontWeight: '600', color: colors.text },
   statLabel: { fontSize: 11, color: colors.textMuted },
-  // Members
-  memberItem: {
+  // Membros {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
     borderRadius: borderRadius.sm, padding: spacing.md, gap: spacing.sm, marginBottom: spacing.xs,
   },
@@ -1101,7 +1100,7 @@ const styles = StyleSheet.create({
   permToggleText: { fontSize: 12, fontWeight: '600' },
   chatMemberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
   addMemberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6, opacity: 0.85 },
-  // Departments
+  // Departamentos
   deptItem: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
     borderRadius: borderRadius.sm, padding: spacing.md, gap: spacing.sm, marginBottom: spacing.xs,
@@ -1115,7 +1114,7 @@ const styles = StyleSheet.create({
   deptChipActive: { backgroundColor: colors.primary + '18', borderColor: colors.primary },
   deptChipText: { color: colors.textSecondary, fontSize: 13 },
   deptChipTextActive: { color: colors.text, fontWeight: '600' },
-  // Permissions matrix
+  // Matriz de permissões
   permRow: { backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md, marginBottom: spacing.xs },
   permSection: { fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: 8 },
   permCols: { flexDirection: 'row', gap: 4 },
@@ -1154,7 +1153,7 @@ const styles = StyleSheet.create({
   modalCancelText: { color: colors.textSecondary, fontWeight: '600', fontSize: 15 },
   modalSaveBtn: { flex: 1, padding: spacing.md, borderRadius: borderRadius.sm, backgroundColor: colors.primary, alignItems: 'center' },
   modalSaveText: { color: colors.text, fontWeight: '600', fontSize: 15 },
-  // Screen permissions per user
+  // Permissões de tela por usuário
   permScreenRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.divider ?? colors.border,

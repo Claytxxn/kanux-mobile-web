@@ -8,7 +8,7 @@ import { useOfflineMessages } from '../../src/contexts/SyncContext';
 import { getChatTyping, setChatTyping, getChatMembersForChat, addMemberToChat, removeMemberFromChat, getCompanyMembers, ChatMember, Chat } from '../../src/lib/supabase';
 import { api } from '../../src/lib/api';
 
-// ── Date separator helpers ──────────────────────────────────────────────────
+// ── Auxiliares de separador de data ─────────────────────────────────────────
 function getDateLabel(dateStr: string): string {
   const d = new Date(dateStr);
   const today = new Date();
@@ -23,16 +23,24 @@ function isSameDay(a: string, b: string): boolean {
   return new Date(a).toDateString() === new Date(b).toDateString();
 }
 
-function buildListItems(msgs: any[]): any[] {
-  // msgs is sorted ascending (oldest first)
+// Constrói lista de itens para o FlatList com separadores de data e pré-cálculo de showSender
+function buildListItems(msgs: any[], myProfileId?: string): any[] {
+  // Mensagens em ordem crescente (mais antigas primeiro)
   const items: any[] = [];
   for (let i = 0; i < msgs.length; i++) {
+    // Inserir separador de data ao mudar de dia
     if (i === 0 || !isSameDay(msgs[i - 1].created_at, msgs[i].created_at)) {
       items.push({ type: 'date', id: `date_${i}`, label: getDateLabel(msgs[i].created_at) });
     }
-    items.push({ type: 'message', ...msgs[i] });
+    const prevMsg = i > 0 ? msgs[i - 1] : null;
+    const isOwn = myProfileId ? msgs[i].user_profile_id === myProfileId : false;
+    // Mostrar nome do remetente na primeira mensagem de cada grupo ou após troca de dia
+    const novoGrupo = !prevMsg || prevMsg.user_profile_id !== msgs[i].user_profile_id
+      || !isSameDay(prevMsg.created_at, msgs[i].created_at);
+    items.push({ type: 'message', __showSender: !isOwn && novoGrupo, ...msgs[i] });
   }
-  return items.reverse(); // inverted FlatList needs newest first
+  // Inverter para FlatList com inverted=true (mais recentes primeiro)
+  return items.reverse();
 }
 
 export default function ChatScreen() {
@@ -177,6 +185,9 @@ export default function ChatScreen() {
     }
   }
 
+  // Itens da lista memoizados para evitar recálculo a cada render
+  const listItems = useMemo(() => buildListItems(messages, profile?.id), [messages, profile?.id]);
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -200,13 +211,11 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* eslint-disable-next-line react-hooks/exhaustive-deps */}
-      {useMemo(() => null, []) /* force memo scope */}
       <FlatList
         ref={listRef}
         style={styles.messageList}
         contentContainerStyle={styles.messageContent}
-        data={buildListItems(messages)}
+        data={listItems}
         keyExtractor={(item: any) => item.id || item.label}
         inverted
         keyboardShouldPersistTaps="handled"
@@ -220,15 +229,13 @@ export default function ChatScreen() {
               </View>
             );
           }
-          const listItems = buildListItems(messages);
           const isMyMessage = item.user_profile_id === profile?.id;
           const senderName = item.display_name || item.user_display_name ||
             chatMembers.find((m: any) => m.user_profile_id === item.user_profile_id)?.user_profile?.display_name || 'Usuário';
           const senderAvatar = item.avatar_url ||
             chatMembers.find((m: any) => m.user_profile_id === item.user_profile_id)?.user_profile?.avatar_url;
-          // In inverted FlatList: index+1 is the OLDER message (visually above)
-          const nextItem = index < listItems.length - 1 ? listItems[index + 1] : null;
-          const showSender = !isMyMessage && (!nextItem || nextItem.type === 'date' || nextItem.user_profile_id !== item.user_profile_id);
+          // showSender pré-calculado em buildListItems (primeiro de cada grupo de mensagens)
+          const showSender = item.__showSender;
           return (
             <View style={[styles.messageRow, isMyMessage ? styles.myMessageRow : styles.otherMessageRow]}>
               {!isMyMessage && (
