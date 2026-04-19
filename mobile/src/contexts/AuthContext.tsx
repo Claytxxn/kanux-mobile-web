@@ -4,7 +4,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, getUserProfile, getUserCompanies, Profile } from '../lib/supabase';
 import { saveUserCompany } from '../lib/offlineStorage';
-import { setAuthToken, initApi } from '../lib/api';
+import { setAuthToken, setTokenProvider, initApi } from '../lib/api';
 
 interface AuthContextType {
   session: Session | null;
@@ -60,6 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Kick off API URL detection early
     initApi().catch(() => {});
+
+    // Register a token provider so every API request always uses the freshest token.
+    // supabase.auth.getSession() automatically refreshes the access_token when near expiry.
+    setTokenProvider(async () => {
+      const { data } = await supabase.auth.getSession();
+      return data.session?.access_token ?? null;
+    });
 
     const unsubscribeNet = NetInfo.addEventListener((state: any) => {
       setIsOnline(state.isConnected ?? false);

@@ -80,25 +80,49 @@ export const getApiUrlSync = getApiUrl;
 // Token storage
 let authToken: string | null = null;
 
-export const setAuthToken = (token: string | null) => authToken = token;
+// Optional async token provider — registered by AuthContext to return a fresh token before each request
+let tokenProvider: (() => Promise<string | null>) | null = null;
+
+export const setAuthToken = (token: string | null) => { authToken = token; };
 export const getAuthToken = (): string | null => authToken;
 
-const getHeaders = (requiresAuth = true): HeadersInit => {
-  if (requiresAuth && !authToken) {
-    console.warn('⚠️ API call requires auth but no token set!');
+/**
+ * Register an async function that returns the current fresh access token.
+ * Called before every authenticated request to ensure the token is never stale.
+ */
+export const setTokenProvider = (fn: () => Promise<string | null>) => { tokenProvider = fn; };
+
+const getHeaders = (token: string | null, requiresAuth = true): HeadersInit => {
+  if (requiresAuth && !token) {
+    console.warn('⚠️ API call requires auth but no token available!');
   }
   return {
     'Content-Type': 'application/json',
-    ...(requiresAuth && authToken && { Authorization: `Bearer ${authToken}` }),
+    ...(requiresAuth && token && { Authorization: `Bearer ${token}` }),
   };
 };
 
 // Generic API request (resolve base URL at request time to allow detection/init)
 async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}, requiresAuth = true): Promise<T> {
   const base = await initApi();
-  const headers = { ...getHeaders(requiresAuth), ...options.headers };
+
+  // Resolve the freshest token available before every request
+  let currentToken = authToken;
+  if (requiresAuth && tokenProvider) {
+    try {
+      const fresh = await tokenProvider();
+      if (fresh) {
+        currentToken = fresh;
+        authToken = fresh; // keep in sync
+      }
+    } catch {
+      // Fall back to cached token
+    }
+  }
+
+  const headers = { ...getHeaders(currentToken, requiresAuth), ...options.headers };
   
-  console.log(`📡 API ${options.method || 'GET'} ${endpoint} | auth=${!!authToken} | token=${authToken ? authToken.substring(0, 20) + '...' : 'null'}`);
+  console.log(`📡 API ${options.method || 'GET'} ${endpoint} | auth=${!!currentToken} | token=${currentToken ? currentToken.substring(0, 20) + '...' : 'null'}`);
   
   const response = await fetch(`${base}${endpoint}`, {
     ...options,
@@ -111,8 +135,8 @@ async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}, 
   if (!text || text.trim() === '') {
     if (!response.ok) {
       // Debug 401: send token to public debug endpoint
-      if (response.status === 401 && authToken) {
-        debugJwt(base, authToken);
+      if (response.status === 401 && currentToken) {
+        debugJwt(base, currentToken);
       }
       throw new Error(`Erro HTTP ${response.status}`);
     }
@@ -131,8 +155,8 @@ async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}, 
 
   if (!response.ok) {
     // Debug 401: send token to public debug endpoint
-    if (response.status === 401 && authToken) {
-      debugJwt(base, authToken);
+    if (response.status === 401 && currentToken) {
+      debugJwt(base, currentToken);
     }
     throw new Error(data?.error || data?.message || `Erro HTTP ${response.status}`);
   }
