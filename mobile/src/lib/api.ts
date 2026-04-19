@@ -361,7 +361,7 @@ export const api = {
   },
 
   // Admin - criar usuário com senha
-  async adminCreateUser(data: { email: string; password: string; display_name: string; position?: string; company_id: string; role: string }) {
+  async adminCreateUser(data: { email: string; password: string; display_name: string; position?: string; company_id: string; role: string; screen_permissions?: string }) {
     return apiRequest('/api/admin/create-user', {
       method: 'POST',
       body: JSON.stringify(data),

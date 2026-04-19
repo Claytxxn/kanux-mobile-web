@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -38,6 +40,7 @@ public class CompanyMember {
     private MemberRole role = MemberRole.MEMBER;
 
     /** Permissões de acesso por tela em formato JSON (ex.: {"tickets":"VIEW"}) */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "screen_permissions", columnDefinition = "jsonb")
     private String screenPermissions = "{}";
 

@@ -61,6 +61,8 @@ export default function AdminScreen() {
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserPosition, setNewUserPosition] = useState('');
   const [newUserRole, setNewUserRole] = useState('MEMBER');
+  const [newUserPermissions, setNewUserPermissions] = useState<Record<string, string>>({});
+  const [newUserCompanyId, setNewUserCompanyId] = useState('');
   const [savingUser, setSavingUser] = useState(false);
 
   // ── Create Chat Modal ──────────────────────────────────────────────────────
@@ -1066,7 +1068,8 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 22, fontWeight: '700', color: colors.text },
   statNumber2: { fontSize: 15, fontWeight: '600', color: colors.text },
   statLabel: { fontSize: 11, color: colors.textMuted },
-  // Membros {
+  // Membros
+  memberItem: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
     borderRadius: borderRadius.sm, padding: spacing.md, gap: spacing.sm, marginBottom: spacing.xs,
   },

@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert,
 import { useEffect, useState, useRef } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { supabase, Ticket, TicketComment, getTicketComments, addTicketComment, updateTicketStatus, getUserProfile } from '../../src/lib/supabase';
+import { Ticket, TicketComment, getTicketComments, addTicketComment, updateTicketStatus, getUserProfile } from '../../src/lib/supabase';
 import { api } from '../../src/lib/api';
 import { colors, spacing } from '../../src/theme';
 
@@ -21,13 +21,10 @@ export default function TicketScreen() {
   async function loadData() {
     if (!id) return;
     try {
-      const { data: ticketData, error: ticketError } = await supabase
-        .from('tickets')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (ticketError) throw ticketError;
+      // Usar backend API (bypassa RLS) em vez de Supabase direto
+      const ticketResult = await api.getTickets(undefined, id);
+      const ticketData = ticketResult?.data;
+      if (!ticketData) throw new Error('Ticket não encontrado');
       setTicket(ticketData);
 
       const commentsData = await getTicketComments(id);

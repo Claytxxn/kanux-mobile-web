@@ -70,7 +70,7 @@ export default function CreateTicketScreen() {
 
     setLoading(true);
     try {
-      const ticket = await createTicket(companyId, title.trim(), description.trim(), priority);
+      const ticket = await createTicket(companyId, title.trim(), description.trim(), priority, selectedDepartmentId || undefined);
       if (ticket) {
         Alert.alert('Sucesso', 'Chamado criado com sucesso!', [{ text: 'OK', onPress: () => router.back() }]);
       }

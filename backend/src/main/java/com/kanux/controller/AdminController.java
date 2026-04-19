@@ -320,8 +320,9 @@ public class AdminController {
             log.error("[createUser] Dados inválidos: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.fail("Dados inválidos: " + e.getMessage()));
         } catch (Exception e) {
-            log.error("[createUser] Erro inesperado: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(ApiResponse.fail("Erro ao criar usuário: " + e.getMessage()));
+            String cause = e.getCause() != null ? " | Causa: " + e.getCause().getMessage() : "";
+            log.error("[createUser] Erro inesperado: {}{}", e.getMessage(), cause, e);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("Erro ao criar usuário: " + e.getMessage() + cause));
         }
     }
 
