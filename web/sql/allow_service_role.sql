@@ -13,6 +13,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.messages TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.companies TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.company_members TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.departments TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.department_members TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_profiles TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.tickets TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.ticket_comments TO service_role;
@@ -23,7 +24,8 @@ GRANT EXECUTE ON FUNCTION public.get_my_profile_id() TO service_role;
 GRANT EXECUTE ON FUNCTION public.get_my_company_ids() TO service_role;
 
 -- GRANTs em sequências
-GRANT USAGE, SELECT ON SEQUENCE public.company_number_seq TO service_role;
+-- Nome correto gerado pelo Flyway V1 para a coluna company_number de companies
+GRANT USAGE, SELECT ON SEQUENCE public.companies_company_number_seq TO service_role;
 
 -- =====================================================
 -- Políticas específicas para service_role (bypass RLS)
@@ -100,6 +102,16 @@ CREATE POLICY "service_role_tickets_insert" ON public.tickets
 
 DROP POLICY IF EXISTS "service_role_tickets_select" ON public.tickets;
 CREATE POLICY "service_role_tickets_select" ON public.tickets
+  FOR SELECT TO service_role
+  USING (true);
+
+DROP POLICY IF EXISTS "service_role_department_members_insert" ON public.department_members;
+CREATE POLICY "service_role_department_members_insert" ON public.department_members
+  FOR INSERT TO service_role
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "service_role_department_members_select" ON public.department_members;
+CREATE POLICY "service_role_department_members_select" ON public.department_members
   FOR SELECT TO service_role
   USING (true);
 

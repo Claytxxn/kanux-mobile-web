@@ -1,5 +1,6 @@
 package com.kanux.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,12 +29,14 @@ public class Chat {
     private String name;
 
     /**
-     * Lombok gera isPrivate() para o campo 'privateChat'.
-     * Mapeado para a coluna is_private através da anotação @Column.
+     * Lombok gera isPrivateChat() para o campo 'privateChat'.
+     * @JsonProperty garante que o JSON use a chave "is_private".
      */
+    @JsonProperty("is_private")
     @Column(name = "is_private", nullable = false)
     private boolean privateChat = false;
 
+    @JsonProperty("only_admins_send")
     @Column(name = "only_admins_send", nullable = false)
     private boolean onlyAdminsSend = false;
 

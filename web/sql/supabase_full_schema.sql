@@ -23,6 +23,17 @@ CREATE TABLE IF NOT EXISTS departments (
   created_at timestamptz DEFAULT now()
 );
 
+-- department_members - users assigned to departments
+CREATE TABLE IF NOT EXISTS department_members (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  department_id uuid REFERENCES departments(id) ON DELETE CASCADE,
+  user_profile_id uuid REFERENCES user_profiles(id) ON DELETE CASCADE,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE (department_id, user_profile_id)
+);
+CREATE INDEX IF NOT EXISTS idx_department_members_dept ON department_members(department_id);
+CREATE INDEX IF NOT EXISTS idx_department_members_profile ON department_members(user_profile_id);
+
 -- user_profiles - links Supabase Auth users to application profile
 CREATE TABLE IF NOT EXISTS user_profiles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -30,6 +41,9 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   display_name text,
   email text,
   avatar_url text,
+  phone text,
+  position text,
+  department text,
   is_super_admin boolean DEFAULT false, -- can manage all companies
   created_at timestamptz DEFAULT now()
 );
@@ -52,6 +66,7 @@ CREATE TABLE IF NOT EXISTS chats (
   department_id uuid REFERENCES departments(id),
   name text NOT NULL,
   is_private boolean DEFAULT false, -- if true: invite-only
+  only_admins_send boolean DEFAULT false, -- if true: only admins can send messages
   created_by uuid REFERENCES user_profiles(id),
   created_at timestamptz DEFAULT now()
 );
@@ -189,12 +204,33 @@ ALTER TABLE attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 
--- user_profiles: allow users to see their own profile; allow service role and super-admin to manage
+-- user_profiles: allow users to see their own profile; super-admin and service role can manage all
 CREATE POLICY "user_profiles_select_self" ON user_profiles
   FOR SELECT
--- user_profiles: no RLS or policies - allow all operations for seeding
--- Policies can be added later after production data is loaded
--- NOTE: In production, enable RLS and add appropriate policies
+  TO authenticated
+  USING (
+    is_super_admin()
+    OR auth_user_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM public.company_members cm
+      JOIN public.user_profiles me ON cm.user_profile_id = me.id
+      WHERE me.auth_user_id = auth.uid()
+        AND cm.company_id IN (
+          SELECT company_id FROM public.company_members WHERE user_profile_id = user_profiles.id
+        )
+    )
+  );
+
+CREATE POLICY "user_profiles_update_self" ON user_profiles
+  FOR UPDATE
+  TO authenticated
+  USING (auth_user_id = auth.uid() OR is_super_admin())
+  WITH CHECK (auth_user_id = auth.uid() OR is_super_admin());
+
+CREATE POLICY "user_profiles_insert_service" ON user_profiles
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (is_super_admin());
 
 -- companies: super-admins can access all; members can access their companies
 CREATE POLICY "companies_select_for_members" ON companies
@@ -224,6 +260,47 @@ CREATE POLICY "departments_manage_by_admins" ON departments
   TO authenticated
   USING (is_super_admin() OR company_id = ANY(get_my_company_ids()))
   WITH CHECK (is_super_admin() OR company_id = ANY(get_my_company_ids()));
+
+-- department_members: users can see memberships for departments in their companies
+ALTER TABLE department_members ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "department_members_select" ON department_members
+  FOR SELECT
+  TO authenticated
+  USING (
+    is_super_admin()
+    OR EXISTS (
+      SELECT 1 FROM public.departments d
+      WHERE d.id = department_members.department_id
+        AND d.company_id = ANY(get_my_company_ids())
+    )
+  );
+
+CREATE POLICY "department_members_manage" ON department_members
+  FOR ALL
+  TO authenticated
+  USING (
+    is_super_admin()
+    OR EXISTS (
+      SELECT 1 FROM public.departments d
+      JOIN public.company_members cm ON cm.company_id = d.company_id
+      JOIN public.user_profiles up ON up.id = cm.user_profile_id
+      WHERE d.id = department_members.department_id
+        AND up.auth_user_id = auth.uid()
+        AND cm.role IN ('ADMIN', 'MANAGER', 'SUPER_ADMIN')
+    )
+  )
+  WITH CHECK (
+    is_super_admin()
+    OR EXISTS (
+      SELECT 1 FROM public.departments d
+      JOIN public.company_members cm ON cm.company_id = d.company_id
+      JOIN public.user_profiles up ON up.id = cm.user_profile_id
+      WHERE d.id = department_members.department_id
+        AND up.auth_user_id = auth.uid()
+        AND cm.role IN ('ADMIN', 'MANAGER', 'SUPER_ADMIN')
+    )
+  );
 
 -- company_members: allow users to see their own membership; super-admin can manage
 CREATE POLICY "company_members_select_self" ON company_members

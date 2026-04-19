@@ -1,18 +1,42 @@
 package com.kanux.controller;
 
-import com.kanux.dto.*;
-import com.kanux.entity.*;
-import com.kanux.repository.*;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-import java.util.*;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
+
+import com.kanux.dto.AddMemberRequest;
+import com.kanux.dto.ApiResponse;
+import com.kanux.dto.InviteUserRequest;
+import com.kanux.dto.UpdateMemberRequest;
+import com.kanux.entity.Company;
+import com.kanux.entity.CompanyMember;
+import com.kanux.entity.UserProfile;
+import com.kanux.repository.CompanyMemberRepository;
+import com.kanux.repository.CompanyRepository;
+import com.kanux.repository.UserProfileRepository;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -52,7 +76,6 @@ public class AdminController {
                         .collect(Collectors.toList())));
     }
 
-    @SuppressWarnings("null")
     @DeleteMapping("/company")
     public ResponseEntity<ApiResponse<Void>> deleteCompany(@AuthenticationPrincipal UserProfile p, @RequestParam String id) {
         if (!isSuperAdmin(p)) return forbidden();
@@ -101,7 +124,6 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.ok(m));
     }
 
-    @SuppressWarnings("null")
     @PutMapping("/members")
     public ResponseEntity<ApiResponse<CompanyMember>> updateMember(
             @AuthenticationPrincipal UserProfile p, @RequestBody UpdateMemberRequest req) {
@@ -112,7 +134,6 @@ public class AdminController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    @SuppressWarnings("null")
     @DeleteMapping("/members")
     public ResponseEntity<ApiResponse<Void>> removeMember(@AuthenticationPrincipal UserProfile p, @RequestParam String id) {
         if (!isAdminOrAbove(p)) return forbidden();
@@ -121,32 +142,78 @@ public class AdminController {
     }
 
     @PostMapping("/invite-user")
+    @SuppressWarnings("UseSpecificCatch")
     public ResponseEntity<ApiResponse<Map<String, Object>>> inviteUser(
             @AuthenticationPrincipal UserProfile p, @RequestBody InviteUserRequest req) {
         if (!isAdminOrAbove(p)) return forbidden();
-        UserProfile invited = userProfileRepository.findByEmail(req.getEmail()).orElseGet(() -> {
-            UserProfile up = new UserProfile();
-            up.setAuthUserId(UUID.randomUUID());
-            up.setEmail(req.getEmail());
-            up.setDisplayName(req.getDisplayName());
-            return userProfileRepository.save(up);
-        });
-        UUID companyId = UUID.fromString(req.getCompanyId());
-        if (!memberRepository.existsByCompanyIdAndUserProfileId(companyId, invited.getId())) {
-            CompanyMember cm = new CompanyMember();
-            cm.setCompanyId(companyId);
-            cm.setUserProfileId(invited.getId());
-            cm.setRole(CompanyMember.MemberRole.valueOf(req.getRole() != null ? req.getRole() : "MEMBER"));
-            memberRepository.save(cm);
+
+        if (supabaseUrl.isBlank() || serviceRoleKey.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail(
+                    "Servidor não configurado para convidar usuários (SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY ausentes)"));
         }
 
-        return ResponseEntity.ok(ApiResponse.ok(Map.of(
-                "message", "Usuário convidado com sucesso",
-                "profile_id", invited.getId().toString(), "email", invited.getEmail())));
+        try {
+            // Buscar ou criar usuário real no Supabase Auth via Invite API
+            HttpHeaders headers = buildSupabaseHeaders();
+            RestTemplate rest = new RestTemplate();
+
+            UUID authUserId;
+            UUID existing = findSupabaseAuthUserByEmail(rest, headers, req.getEmail());
+            if (existing != null) {
+                authUserId = existing;
+            } else {
+                // Enviar convite por e-mail via Supabase — cria auth.users real
+                Map<String, Object> inviteBody = new LinkedHashMap<>();
+                inviteBody.put("email", req.getEmail());
+                inviteBody.put("data", Map.of("display_name",
+                        req.getDisplayName() != null ? req.getDisplayName() : req.getEmail().split("@")[0]));
+                HttpEntity<Map<String, Object>> inviteReq = new HttpEntity<>(inviteBody, headers);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> authResp = rest.postForObject(
+                        supabaseUrl + "/auth/v1/admin/invite", inviteReq, Map.class);
+                if (authResp == null || authResp.get("id") == null)
+                    return ResponseEntity.badRequest().body(ApiResponse.fail("Supabase não retornou ID do usuário convidado"));
+                authUserId = UUID.fromString(authResp.get("id").toString());
+            }
+
+            // Criar ou atualizar perfil local com o auth_user_id real
+            UserProfile invited = userProfileRepository.findByEmail(req.getEmail()).orElseGet(() -> {
+                UserProfile up = new UserProfile();
+                up.setAuthUserId(authUserId);
+                up.setEmail(req.getEmail());
+                up.setDisplayName(req.getDisplayName() != null ? req.getDisplayName()
+                        : req.getEmail().split("@")[0]);
+                return userProfileRepository.save(up);
+            });
+            // Garantir que o auth_user_id está correto (caso fosse criado antes com UUID falso)
+            if (!authUserId.equals(invited.getAuthUserId())) {
+                invited.setAuthUserId(authUserId);
+                invited = userProfileRepository.save(invited);
+            }
+
+            UUID companyId = UUID.fromString(req.getCompanyId());
+            if (!memberRepository.existsByCompanyIdAndUserProfileId(companyId, invited.getId())) {
+                CompanyMember cm = new CompanyMember();
+                cm.setCompanyId(companyId);
+                cm.setUserProfileId(invited.getId());
+                cm.setRole(CompanyMember.MemberRole.valueOf(req.getRole() != null ? req.getRole() : "MEMBER"));
+                memberRepository.save(cm);
+            }
+
+            return ResponseEntity.ok(ApiResponse.ok(Map.of(
+                    "message", "Convite enviado com sucesso",
+                    "profile_id", invited.getId().toString(),
+                    "email", invited.getEmail())));
+
+        } catch (HttpClientErrorException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("Erro Supabase: " + e.getResponseBodyAsString()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("Erro ao convidar usuário: " + e.getMessage()));
+        }
     }
 
     @PostMapping("/create-user")
-    @SuppressWarnings({"UseSpecificCatch", "null"})
+    @SuppressWarnings("UseSpecificCatch")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createUser(
             @AuthenticationPrincipal UserProfile p, @RequestBody Map<String, String> body) {
         if (!isAdminOrAbove(p)) return forbidden();
@@ -178,7 +245,7 @@ public class AdminController {
             UUID existingAuthId = findSupabaseAuthUserByEmail(rest, headers, email);
             if (existingAuthId != null) {
                 authUserId = existingAuthId;
-                // Update password for existing auth user
+                // Update -password for existing auth user
                 updateSupabaseAuthUser(rest, headers, authUserId, password, displayName);
             } else {
                 authUserId = createSupabaseAuthUser(rest, headers, email, password, displayName);
@@ -231,7 +298,7 @@ public class AdminController {
 
     // ── Editar Usuário ───────────────────────────────────────────────────────
     @PutMapping("/users/{profileId}")
-    @SuppressWarnings({"UseSpecificCatch", "null"})
+    @SuppressWarnings("UseSpecificCatch")
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateUser(
             @AuthenticationPrincipal UserProfile p,
             @PathVariable String profileId,
@@ -311,7 +378,7 @@ public class AdminController {
         return headers;
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "UseSpecificCatch"})
     private UUID findSupabaseAuthUserByEmail(RestTemplate rest, HttpHeaders headers, String email) {
         try {
             HttpEntity<Void> entity = new HttpEntity<>(headers);

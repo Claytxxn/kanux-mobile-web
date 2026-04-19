@@ -73,7 +73,7 @@ public class ChatController {
         }
         if (companyId != null)
             return ResponseEntity.ok(ApiResponse.ok(
-                    chatRepository.findByCompanyIdOrderByCreatedAtDesc(UUID.fromString(companyId))));
+                    chatRepository.findVisibleChats(UUID.fromString(companyId), p.getId())));
         return ResponseEntity.badRequest().body(ApiResponse.fail("companyId ou chatId é obrigatório"));
     }
 
