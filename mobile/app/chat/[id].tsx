@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Modal, FlatList, Alert, Image } from 'react-native';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -8,6 +8,33 @@ import { useOfflineMessages } from '../../src/contexts/SyncContext';
 import { getChatTyping, setChatTyping, getChatMembersForChat, addMemberToChat, removeMemberFromChat, getCompanyMembers, ChatMember, Chat } from '../../src/lib/supabase';
 import { api } from '../../src/lib/api';
 
+// ── Date separator helpers ──────────────────────────────────────────────────
+function getDateLabel(dateStr: string): string {
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Hoje';
+  if (d.toDateString() === yesterday.toDateString()) return 'Ontem';
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function isSameDay(a: string, b: string): boolean {
+  return new Date(a).toDateString() === new Date(b).toDateString();
+}
+
+function buildListItems(msgs: any[]): any[] {
+  // msgs is sorted ascending (oldest first)
+  const items: any[] = [];
+  for (let i = 0; i < msgs.length; i++) {
+    if (i === 0 || !isSameDay(msgs[i - 1].created_at, msgs[i].created_at)) {
+      items.push({ type: 'date', id: `date_${i}`, label: getDateLabel(msgs[i].created_at) });
+    }
+    items.push({ type: 'message', ...msgs[i] });
+  }
+  return items.reverse(); // inverted FlatList needs newest first
+}
+
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, profile } = useAuth();
@@ -15,6 +42,7 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [remoteTyping, setRemoteTyping] = useState<string[]>([]);
   const typingTimer = useRef<any>(null);
+  const listRef = useRef<FlatList>(null);
 
   // Membros do chat
   const [chatMembers, setChatMembers] = useState<ChatMember[]>([]);
@@ -152,8 +180,8 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
     >
       {/* Barra de informações do chat */}
       <View style={styles.chatHeader}>
@@ -172,23 +200,38 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.messageList} contentContainerStyle={styles.messageContent}>
-        {messages.length === 0 && !loading && (
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>Nenhuma mensagem ainda</Text>
-            <Text style={styles.emptySubtext}>Envie uma mensagem para começar a conversa</Text>
-          </View>
-        )}
-        {messages.map((item, index) => {
+      {/* eslint-disable-next-line react-hooks/exhaustive-deps */}
+      {useMemo(() => null, []) /* force memo scope */}
+      <FlatList
+        ref={listRef}
+        style={styles.messageList}
+        contentContainerStyle={styles.messageContent}
+        data={buildListItems(messages)}
+        keyExtractor={(item: any) => item.id || item.label}
+        inverted
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item, index }: { item: any; index: number }) => {
+          if (item.type === 'date') {
+            return (
+              <View style={styles.dateSeparator}>
+                <View style={styles.dateSeparatorLine} />
+                <Text style={styles.dateSeparatorText}>{item.label}</Text>
+                <View style={styles.dateSeparatorLine} />
+              </View>
+            );
+          }
+          const listItems = buildListItems(messages);
           const isMyMessage = item.user_profile_id === profile?.id;
-          const senderName = item.display_name || item.user_display_name || chatMembers.find(m => m.user_profile_id === item.user_profile_id)?.user_profile?.display_name || 'Usuário';
-          const senderAvatar = item.avatar_url || chatMembers.find(m => m.user_profile_id === item.user_profile_id)?.user_profile?.avatar_url;
-          // Show sender name if it's a different user's message and previous message was from a different sender
-          const prevMsg = index > 0 ? messages[index - 1] : null;
-          const showSender = !isMyMessage && (!prevMsg || prevMsg.user_profile_id !== item.user_profile_id);
+          const senderName = item.display_name || item.user_display_name ||
+            chatMembers.find((m: any) => m.user_profile_id === item.user_profile_id)?.user_profile?.display_name || 'Usuário';
+          const senderAvatar = item.avatar_url ||
+            chatMembers.find((m: any) => m.user_profile_id === item.user_profile_id)?.user_profile?.avatar_url;
+          // In inverted FlatList: index+1 is the OLDER message (visually above)
+          const nextItem = index < listItems.length - 1 ? listItems[index + 1] : null;
+          const showSender = !isMyMessage && (!nextItem || nextItem.type === 'date' || nextItem.user_profile_id !== item.user_profile_id);
           return (
-            <View key={item.id} style={[styles.messageRow, isMyMessage ? styles.myMessageRow : styles.otherMessageRow]}>
-              {!isMyMessage && showSender && (
+            <View style={[styles.messageRow, isMyMessage ? styles.myMessageRow : styles.otherMessageRow]}>
+              {!isMyMessage && (
                 senderAvatar ? (
                   <Image source={{ uri: senderAvatar }} style={styles.msgAvatar} />
                 ) : (
@@ -197,7 +240,6 @@ export default function ChatScreen() {
                   </View>
                 )
               )}
-              {!isMyMessage && !showSender && <View style={styles.msgAvatarSpacer} />}
               <View style={[styles.messageBubble, isMyMessage ? styles.myMessage : styles.otherMessage]}>
                 {showSender && (
                   <Text style={styles.senderName}>{senderName}</Text>
@@ -212,13 +254,23 @@ export default function ChatScreen() {
               </View>
             </View>
           );
-        })}
-        {remoteTyping.length > 0 && (
-          <View style={styles.typingIndicator}>
-            <Text style={styles.typingText}>{`${remoteTyping.join(', ')} está digitando...`}</Text>
-          </View>
-        )}
-      </ScrollView>
+        }}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>Nenhuma mensagem ainda</Text>
+              <Text style={styles.emptySubtext}>Envie uma mensagem para começar a conversa</Text>
+            </View>
+          ) : null
+        }
+        ListHeaderComponent={
+          remoteTyping.length > 0 ? (
+            <View style={styles.typingIndicator}>
+              <Text style={styles.typingText}>{`${remoteTyping.join(', ')} está digitando...`}</Text>
+            </View>
+          ) : null
+        }
+      />
 
       <View style={styles.inputContainer}>
         {canSendMessage ? (
@@ -579,6 +631,27 @@ const styles = StyleSheet.create({
   },
   msgAvatarSpacer: {
     width: 34,
+  },
+  dateSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  dateSeparatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.divider ?? colors.border,
+  },
+  dateSeparatorText: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginHorizontal: spacing.sm,
+    backgroundColor: colors.background,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   myMessageText: {
     color: '#fff',

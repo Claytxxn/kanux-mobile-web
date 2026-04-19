@@ -24,6 +24,22 @@ const ROLE_COLORS: Record<string, string> = {
   SUPER_ADMIN: colors.error ?? '#EF4444',
 };
 
+const SCREENS = [
+  { id: 'tickets', name: 'Tickets' },
+  { id: 'chats', name: 'Chats' },
+  { id: 'mensagens', name: 'Mensagens' },
+  { id: 'perfil', name: 'Perfil' },
+  { id: 'departamentos', name: 'Departamentos' },
+  { id: 'relatorios', name: 'Relatórios' },
+];
+
+const PERM_LEVELS = [
+  { id: 'NONE', label: 'Bloqueado' },
+  { id: 'VIEW', label: 'Ver' },
+  { id: 'WRITE', label: 'Criar/Editar' },
+  { id: 'FULL', label: 'Completo' },
+];
+
 export default function AdminScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -178,6 +194,10 @@ export default function AdminScreen() {
     if (!newUserPassword.trim() || newUserPassword.length < 6) {
       Alert.alert('Erro', 'Senha deve ter no mínimo 6 caracteres'); return;
     }
+    const targetCompanyId = newUserCompanyId || currentCompanyId;
+    if (!targetCompanyId) {
+      Alert.alert('Erro', 'Selecione uma empresa'); return;
+    }
     setSavingUser(true);
     try {
       await api.adminCreateUser({
@@ -185,13 +205,14 @@ export default function AdminScreen() {
         password: newUserPassword,
         display_name: newUserName.trim(),
         position: newUserPosition.trim() || undefined,
-        company_id: currentCompanyId,
+        company_id: targetCompanyId,
         role: newUserRole,
+        screen_permissions: JSON.stringify(newUserPermissions),
       });
       Alert.alert('Sucesso', `Usuário ${newUserName.trim()} criado com acesso ao sistema`);
       setShowCreateUser(false);
       resetUserForm();
-      loadCompanyData(currentCompanyId);
+      loadCompanyData(targetCompanyId);
     } catch (error: any) {
       Alert.alert('Erro', error.message || 'Falha ao criar usuário');
     } finally { setSavingUser(false); }
@@ -200,6 +221,8 @@ export default function AdminScreen() {
   function resetUserForm() {
     setNewUserName(''); setNewUserEmail(''); setNewUserPassword('');
     setNewUserPosition(''); setNewUserRole('MEMBER');
+    setNewUserCompanyId(currentCompanyId || '');
+    setNewUserPermissions({});
   }
 
   function openEditUser(member: Member) {
@@ -469,7 +492,7 @@ export default function AdminScreen() {
           <View style={styles.tabContent}>
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionLabel}>MEMBROS — {currentCompany?.name}</Text>
-              <TouchableOpacity style={styles.addButton} onPress={() => setShowCreateUser(true)}>
+              <TouchableOpacity style={styles.addButton} onPress={() => { setNewUserCompanyId(currentCompanyId || ''); setShowCreateUser(true); }}>
                 <Ionicons name="add" size={16} color={colors.text} />
                 <Text style={styles.addButtonText}>Novo</Text>
               </TouchableOpacity>
@@ -668,6 +691,44 @@ export default function AdminScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            <Text style={styles.fieldLabel}>EMPRESA *</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
+              {companies.map(c => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[styles.deptChip, (newUserCompanyId || currentCompanyId) === c.id && styles.deptChipActive, { marginRight: 6 }]}
+                  onPress={() => setNewUserCompanyId(c.id)}
+                >
+                  <Text style={[styles.deptChipText, (newUserCompanyId || currentCompanyId) === c.id && styles.deptChipTextActive]}>{c.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={styles.fieldLabel}>ACESSO POR TELA</Text>
+            <Text style={[styles.hintText, { marginTop: 0 }]}>Defina o nível de acesso de cada módulo para este usuário.</Text>
+            {SCREENS.map(screen => (
+              <View key={screen.id} style={styles.permScreenRow}>
+                <Text style={styles.permScreenName}>{screen.name}</Text>
+                <View style={styles.permLevelRow}>
+                  {PERM_LEVELS.map(level => (
+                    <TouchableOpacity
+                      key={level.id}
+                      style={[
+                        styles.permLevelBtn,
+                        (newUserPermissions[screen.id] || 'VIEW') === level.id && styles.permLevelBtnActive,
+                      ]}
+                      onPress={() => setNewUserPermissions(prev => ({ ...prev, [screen.id]: level.id }))}
+                    >
+                      <Text style={[
+                        styles.permLevelText,
+                        (newUserPermissions[screen.id] || 'VIEW') === level.id && styles.permLevelTextActive,
+                      ]}>{level.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ))}
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={() => { setShowCreateUser(false); resetUserForm(); }}>
@@ -1093,5 +1154,19 @@ const styles = StyleSheet.create({
   modalCancelText: { color: colors.textSecondary, fontWeight: '600', fontSize: 15 },
   modalSaveBtn: { flex: 1, padding: spacing.md, borderRadius: borderRadius.sm, backgroundColor: colors.primary, alignItems: 'center' },
   modalSaveText: { color: colors.text, fontWeight: '600', fontSize: 15 },
+  // Screen permissions per user
+  permScreenRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.divider ?? colors.border,
+  },
+  permScreenName: { fontSize: 13, fontWeight: '600', color: colors.text, flex: 1 },
+  permLevelRow: { flexDirection: 'row', gap: 3 },
+  permLevelBtn: {
+    paddingHorizontal: 7, paddingVertical: 4, borderRadius: 5,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+  },
+  permLevelBtnActive: { backgroundColor: colors.primary + '20', borderColor: colors.primary },
+  permLevelText: { fontSize: 10, color: colors.textSecondary, fontWeight: '500' },
+  permLevelTextActive: { color: colors.primary, fontWeight: '700' },
 });
 

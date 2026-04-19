@@ -29,6 +29,9 @@ public class CompanyMember {
     @Column(nullable = false)
     private MemberRole role = MemberRole.MEMBER;
 
+    @Column(name = "screen_permissions", columnDefinition = "jsonb")
+    private String screenPermissions = "{}";
+
     @Column(name = "joined_at", updatable = false)
     private Instant joinedAt;
 

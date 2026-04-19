@@ -102,6 +102,7 @@ public class AdminController {
             map.put("id", m.getId()); map.put("company_id", m.getCompanyId());
             map.put("user_profile_id", m.getUserProfileId()); map.put("role", m.getRole());
             map.put("joined_at", m.getJoinedAt());
+            map.put("screen_permissions", m.getScreenPermissions() != null ? m.getScreenPermissions() : "{}");
             if (m.getUserProfile() != null) {
                 UserProfile up = m.getUserProfile();
                 map.put("user_profiles", Map.of(
@@ -287,7 +288,18 @@ public class AdminController {
                 cm.setCompanyId(cId);
                 cm.setUserProfileId(profile.getId());
                 cm.setRole(CompanyMember.MemberRole.valueOf(role));
+                String screenPermissions = body.get("screen_permissions");
+                if (screenPermissions != null && !screenPermissions.isBlank()) {
+                    cm.setScreenPermissions(screenPermissions);
+                }
                 memberRepository.save(cm);
+            } else {
+                // Update screen_permissions on existing membership
+                String screenPermissions = body.get("screen_permissions");
+                if (screenPermissions != null && !screenPermissions.isBlank()) {
+                    memberRepository.findByCompanyIdAndUserProfileId(cId, profile.getId())
+                        .ifPresent(cm -> { cm.setScreenPermissions(screenPermissions); memberRepository.save(cm); });
+                }
             }
 
             Map<String, Object> result = new LinkedHashMap<>();
@@ -334,6 +346,9 @@ public class AdminController {
                 memberRepository.findByCompanyIdAndUserProfileId(companyId, profile.getId())
                         .ifPresent(member -> {
                             member.setRole(CompanyMember.MemberRole.valueOf(body.get("role")));
+                            if (body.containsKey("screen_permissions")) {
+                                member.setScreenPermissions(body.get("screen_permissions"));
+                            }
                             memberRepository.save(member);
                         });
             }
