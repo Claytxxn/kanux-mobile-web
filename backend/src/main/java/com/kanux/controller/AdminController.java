@@ -27,6 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.kanux.dto.AddMemberRequest;
 import com.kanux.dto.ApiResponse;
 import com.kanux.dto.InviteUserRequest;
@@ -41,6 +44,8 @@ import com.kanux.repository.UserProfileRepository;
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminController.class);
 
     @Value("${supabase.url:}")
     private String supabaseUrl;
@@ -233,10 +238,12 @@ public class AdminController {
 
         try {
             if (supabaseUrl.isBlank() || serviceRoleKey.isBlank()) {
+                log.error("[createUser] SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configurados");
                 return ResponseEntity.badRequest().body(ApiResponse.fail(
                         "Servidor não configurado para criar usuários (SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY ausentes)"));
             }
 
+            log.info("[createUser] Criando usuário email={} supabaseUrl={}", email, supabaseUrl);
             UUID authUserId;
             HttpHeaders headers = buildSupabaseHeaders();
             RestTemplate rest = new RestTemplate();
@@ -245,10 +252,13 @@ public class AdminController {
             UUID existingAuthId = findSupabaseAuthUserByEmail(rest, headers, email);
             if (existingAuthId != null) {
                 authUserId = existingAuthId;
+                log.info("[createUser] Usuário já existe no Supabase Auth id={}, atualizando senha", authUserId);
                 // Update -password for existing auth user
                 updateSupabaseAuthUser(rest, headers, authUserId, password, displayName);
             } else {
+                log.info("[createUser] Usuário não encontrado no Supabase Auth, criando novo");
                 authUserId = createSupabaseAuthUser(rest, headers, email, password, displayName);
+                log.info("[createUser] Usuário criado no Supabase Auth id={}", authUserId);
             }
 
             // 2. Create or find user profile
@@ -288,10 +298,13 @@ public class AdminController {
             return ResponseEntity.ok(ApiResponse.ok(result));
         } catch (HttpClientErrorException e) {
             String errorBody = e.getResponseBodyAsString();
+            log.error("[createUser] Erro Supabase HTTP {} body={}", e.getStatusCode(), errorBody);
             return ResponseEntity.badRequest().body(ApiResponse.fail("Erro Supabase Auth: " + errorBody));
         } catch (IllegalArgumentException e) {
+            log.error("[createUser] Dados inválidos: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.fail("Dados inválidos: " + e.getMessage()));
         } catch (Exception e) {
+            log.error("[createUser] Erro inesperado: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(ApiResponse.fail("Erro ao criar usuário: " + e.getMessage()));
         }
     }
@@ -383,10 +396,11 @@ public class AdminController {
         try {
             HttpEntity<Void> entity = new HttpEntity<>(headers);
             Map<String, Object> response = rest.exchange(
-                    supabaseUrl + "/auth/v1/admin/users?page=1&per_page=100",
+                    supabaseUrl + "/auth/v1/admin/users?page=1&per_page=1000",
                     HttpMethod.GET, entity, Map.class).getBody();
             List<?> users = response != null ? (List<?>) response.get("users") : null;
             if (users != null) {
+                log.info("[findSupabaseAuth] Total de usuários encontrados: {}", users.size());
                 for (Object u : users) {
                     Map<String, Object> usr = (Map<String, Object>) u;
                     if (email.equalsIgnoreCase(String.valueOf(usr.get("email")))) {
@@ -395,7 +409,7 @@ public class AdminController {
                 }
             }
         } catch (Exception e) {
-            // Lookup failed; return null to trigger creation
+            log.warn("[findSupabaseAuth] Falha ao buscar usuário por email: {}", e.getMessage());
         }
         return null;
     }

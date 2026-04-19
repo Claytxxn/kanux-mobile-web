@@ -56,7 +56,7 @@ export default function LoginScreen() {
             <View style={styles.inputWrapper}>
               <Ionicons name="mail-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput style={styles.inputWithIcon} placeholder="seu@email.com" placeholderTextColor={colors.textMuted}
-                value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
+                value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" />
             </View>
           </View>
           <View style={styles.inputContainer}>
@@ -64,7 +64,7 @@ export default function LoginScreen() {
             <View style={styles.inputWrapper}>
               <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput style={styles.inputWithIcon} placeholder="••••••••" placeholderTextColor={colors.textMuted}
-                value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
+                value={password} onChangeText={setPassword} secureTextEntry={!showPassword} autoCorrect={false} autoComplete="off" />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
                 <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textMuted} />
               </TouchableOpacity>
@@ -76,7 +76,7 @@ export default function LoginScreen() {
               <View style={styles.inputWrapper}>
                 <Ionicons name="business-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput style={styles.inputWithIcon} placeholder="1000" placeholderTextColor={colors.textMuted}
-                  value={companySlug} onChangeText={setCompanySlug} keyboardType="numeric" />
+                  value={companySlug} onChangeText={setCompanySlug} keyboardType="numeric" autoCorrect={false} />
               </View>
             </View>
           )}

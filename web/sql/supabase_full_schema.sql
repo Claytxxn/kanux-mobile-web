@@ -205,6 +205,7 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 
 -- user_profiles: allow users to see their own profile; super-admin and service role can manage all
+DROP POLICY IF EXISTS "user_profiles_select_self" ON user_profiles;
 CREATE POLICY "user_profiles_select_self" ON user_profiles
   FOR SELECT
   TO authenticated
@@ -221,28 +222,33 @@ CREATE POLICY "user_profiles_select_self" ON user_profiles
     )
   );
 
+DROP POLICY IF EXISTS "user_profiles_update_self" ON user_profiles;
 CREATE POLICY "user_profiles_update_self" ON user_profiles
   FOR UPDATE
   TO authenticated
   USING (auth_user_id = auth.uid() OR is_super_admin())
   WITH CHECK (auth_user_id = auth.uid() OR is_super_admin());
 
+DROP POLICY IF EXISTS "user_profiles_insert_service" ON user_profiles;
 CREATE POLICY "user_profiles_insert_service" ON user_profiles
   FOR INSERT
   TO authenticated
   WITH CHECK (is_super_admin());
 
 -- companies: super-admins can access all; members can access their companies
+DROP POLICY IF EXISTS "companies_select_for_members" ON companies;
 CREATE POLICY "companies_select_for_members" ON companies
   FOR SELECT
   TO authenticated
   USING (is_super_admin() OR id = ANY(get_my_company_ids()));
 
+DROP POLICY IF EXISTS "companies_insert_by_super_admin" ON companies;
 CREATE POLICY "companies_insert_by_super_admin" ON companies
   FOR INSERT
   TO authenticated
   WITH CHECK (is_super_admin());
 
+DROP POLICY IF EXISTS "companies_update_by_admins" ON companies;
 CREATE POLICY "companies_update_by_admins" ON companies
   FOR UPDATE
   TO authenticated
@@ -250,11 +256,13 @@ CREATE POLICY "companies_update_by_admins" ON companies
   WITH CHECK (is_super_admin() OR id = ANY(get_my_company_ids()));
 
 -- departments: scoped to company
+DROP POLICY IF EXISTS "departments_select_for_company" ON departments;
 CREATE POLICY "departments_select_for_company" ON departments
   FOR SELECT
   TO authenticated
   USING (is_super_admin() OR company_id = ANY(get_my_company_ids()));
 
+DROP POLICY IF EXISTS "departments_manage_by_admins" ON departments;
 CREATE POLICY "departments_manage_by_admins" ON departments
   FOR ALL
   TO authenticated
@@ -264,6 +272,7 @@ CREATE POLICY "departments_manage_by_admins" ON departments
 -- department_members: users can see memberships for departments in their companies
 ALTER TABLE department_members ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "department_members_select" ON department_members;
 CREATE POLICY "department_members_select" ON department_members
   FOR SELECT
   TO authenticated
@@ -276,6 +285,7 @@ CREATE POLICY "department_members_select" ON department_members
     )
   );
 
+DROP POLICY IF EXISTS "department_members_manage" ON department_members;
 CREATE POLICY "department_members_manage" ON department_members
   FOR ALL
   TO authenticated
@@ -303,6 +313,7 @@ CREATE POLICY "department_members_manage" ON department_members
   );
 
 -- company_members: allow users to see their own membership; super-admin can manage
+DROP POLICY IF EXISTS "company_members_select_self" ON company_members;
 CREATE POLICY "company_members_select_self" ON company_members
   FOR SELECT
   TO authenticated
@@ -310,6 +321,7 @@ CREATE POLICY "company_members_select_self" ON company_members
     EXISTS (SELECT 1 FROM public.user_profiles up WHERE up.auth_user_id = auth.uid() AND up.id = company_members.user_profile_id)
   ));
 
+DROP POLICY IF EXISTS "company_members_manage" ON company_members;
 CREATE POLICY "company_members_manage" ON company_members
   FOR ALL
   TO authenticated
@@ -317,6 +329,7 @@ CREATE POLICY "company_members_manage" ON company_members
   WITH CHECK (is_super_admin());
 
 -- chats: public chats accessible by company membership; private chats restricted to chat_members or super-admins
+DROP POLICY IF EXISTS "chats_select_public_or_private_member" ON chats;
 CREATE POLICY "chats_select_public_or_private_member" ON chats
   FOR SELECT
   TO authenticated
@@ -335,6 +348,7 @@ CREATE POLICY "chats_select_public_or_private_member" ON chats
     )
   );
 
+DROP POLICY IF EXISTS "chats_manage_by_admins" ON chats;
 CREATE POLICY "chats_manage_by_admins" ON chats
   FOR ALL
   TO authenticated
@@ -342,6 +356,7 @@ CREATE POLICY "chats_manage_by_admins" ON chats
   WITH CHECK (is_super_admin() OR company_id = ANY(get_my_company_ids()));
 
 -- chat_members: members can see membership rows for chats they belong to; super-admin can manage
+DROP POLICY IF EXISTS "chat_members_select" ON chat_members;
 CREATE POLICY "chat_members_select" ON chat_members
   FOR SELECT
   TO authenticated
@@ -356,6 +371,7 @@ CREATE POLICY "chat_members_select" ON chat_members
     )
   );
 
+DROP POLICY IF EXISTS "chat_members_manage" ON chat_members;
 CREATE POLICY "chat_members_manage" ON chat_members
   FOR ALL
   TO authenticated
@@ -371,6 +387,7 @@ CREATE POLICY "chat_members_manage" ON chat_members
   ));
 
 -- messages: allow insert by authenticated users when their profile is associated and chat visibility allows it
+DROP POLICY IF EXISTS "messages_insert_authenticated" ON messages;
 CREATE POLICY "messages_insert_authenticated" ON messages
   FOR INSERT
   TO authenticated
@@ -393,6 +410,7 @@ CREATE POLICY "messages_insert_authenticated" ON messages
     )
   );
 
+DROP POLICY IF EXISTS "messages_select" ON messages;
 CREATE POLICY "messages_select" ON messages
   FOR SELECT
   TO authenticated
@@ -407,16 +425,19 @@ CREATE POLICY "messages_select" ON messages
   );
 
 -- tickets: company-scoped; creator can insert; managers/admins and super-admin can manage
+DROP POLICY IF EXISTS "tickets_select_company" ON tickets;
 CREATE POLICY "tickets_select_company" ON tickets
   FOR SELECT
   TO authenticated
   USING (is_super_admin() OR company_id = ANY(get_my_company_ids()));
 
+DROP POLICY IF EXISTS "tickets_insert_creator" ON tickets;
 CREATE POLICY "tickets_insert_creator" ON tickets
   FOR INSERT
   TO authenticated
   WITH CHECK ((SELECT id FROM public.user_profiles WHERE auth_user_id = auth.uid()) = creator_profile_id);
 
+DROP POLICY IF EXISTS "tickets_manage_by_admins" ON tickets;
 CREATE POLICY "tickets_manage_by_admins" ON tickets
   FOR ALL
   TO authenticated
@@ -424,17 +445,20 @@ CREATE POLICY "tickets_manage_by_admins" ON tickets
   WITH CHECK (is_super_admin() OR company_id = ANY(get_my_company_ids()));
 
 -- ticket_comments: visible to company members and super-admins
+DROP POLICY IF EXISTS "ticket_comments_select" ON ticket_comments;
 CREATE POLICY "ticket_comments_select" ON ticket_comments
   FOR SELECT
   TO authenticated
   USING (is_super_admin() OR EXISTS (SELECT 1 FROM tickets t WHERE t.id = ticket_comments.ticket_id AND t.company_id = ANY(get_my_company_ids())));
 
+DROP POLICY IF EXISTS "ticket_comments_insert" ON ticket_comments;
 CREATE POLICY "ticket_comments_insert" ON ticket_comments
   FOR INSERT
   TO authenticated
   WITH CHECK ((SELECT id FROM public.user_profiles WHERE auth_user_id = auth.uid()) = user_profile_id);
 
 -- attachments & audit_logs: restricted to company context or super-admin
+DROP POLICY IF EXISTS "attachments_select" ON attachments;
 CREATE POLICY "attachments_select" ON attachments
   FOR SELECT
   TO authenticated
@@ -443,6 +467,7 @@ CREATE POLICY "attachments_select" ON attachments
     OR EXISTS (SELECT 1 FROM tickets t WHERE t.id = attachments.owner_id AND t.company_id = ANY(get_my_company_ids()))
   ));
 
+DROP POLICY IF EXISTS "audit_logs_select_super_admin" ON audit_logs;
 CREATE POLICY "audit_logs_select_super_admin" ON audit_logs
   FOR SELECT
   TO authenticated

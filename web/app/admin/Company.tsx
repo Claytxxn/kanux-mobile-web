@@ -131,12 +131,6 @@ const profileResult = await apiClient.getProfile();
             if (company) setCurrentCompany(company);
           }
         }
-
-          if (companyIdParam) {
-            const company = companiesData?.find(c => c.id === companyIdParam);
-            if (company) setCurrentCompany(company);
-          }
-        }
         setLoading(false);
       } catch (e) {
         setLoading(false);

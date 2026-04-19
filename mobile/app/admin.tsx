@@ -640,15 +640,15 @@ export default function AdminScreen() {
 
             <Text style={styles.fieldLabel}>NOME COMPLETO *</Text>
             <TextInput style={styles.modalInput} placeholder="Ex: João Silva" placeholderTextColor={colors.textMuted}
-              value={newUserName} onChangeText={setNewUserName} />
+              value={newUserName} onChangeText={setNewUserName} autoCorrect={false} />
 
             <Text style={styles.fieldLabel}>EMAIL *</Text>
             <TextInput style={styles.modalInput} placeholder="email@exemplo.com" placeholderTextColor={colors.textMuted}
-              value={newUserEmail} onChangeText={setNewUserEmail} keyboardType="email-address" autoCapitalize="none" />
+              value={newUserEmail} onChangeText={setNewUserEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
 
             <Text style={styles.fieldLabel}>SENHA * (mín. 6 caracteres)</Text>
             <TextInput style={styles.modalInput} placeholder="Senha de acesso" placeholderTextColor={colors.textMuted}
-              value={newUserPassword} onChangeText={setNewUserPassword} secureTextEntry />
+              value={newUserPassword} onChangeText={setNewUserPassword} secureTextEntry autoCorrect={false} autoComplete="off" />
 
             <Text style={styles.fieldLabel}>CARGO</Text>
             <TextInput style={styles.modalInput} placeholder="Ex: Analista de Suporte" placeholderTextColor={colors.textMuted}
@@ -913,11 +913,11 @@ export default function AdminScreen() {
 
             <Text style={styles.fieldLabel}>NOME COMPLETO *</Text>
             <TextInput style={styles.modalInput} placeholder="Nome" placeholderTextColor={colors.textMuted}
-              value={editUserName} onChangeText={setEditUserName} />
+              value={editUserName} onChangeText={setEditUserName} autoCorrect={false} />
 
             <Text style={styles.fieldLabel}>EMAIL</Text>
             <TextInput style={styles.modalInput} placeholder="email@exemplo.com" placeholderTextColor={colors.textMuted}
-              value={editUserEmail} onChangeText={setEditUserEmail} keyboardType="email-address" autoCapitalize="none" />
+              value={editUserEmail} onChangeText={setEditUserEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
 
             <Text style={styles.fieldLabel}>CARGO</Text>
             <TextInput style={styles.modalInput} placeholder="Ex: Analista" placeholderTextColor={colors.textMuted}
@@ -929,7 +929,7 @@ export default function AdminScreen() {
 
             <Text style={styles.fieldLabel}>NOVA SENHA (deixe vazio para manter)</Text>
             <TextInput style={styles.modalInput} placeholder="Mín. 6 caracteres" placeholderTextColor={colors.textMuted}
-              value={editUserPassword} onChangeText={setEditUserPassword} secureTextEntry />
+              value={editUserPassword} onChangeText={setEditUserPassword} secureTextEntry autoCorrect={false} autoComplete="off" />
 
             <Text style={styles.fieldLabel}>FUNÇÃO NA EMPRESA</Text>
             <View style={styles.roleSelector}>
