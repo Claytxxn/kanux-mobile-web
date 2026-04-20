@@ -1,15 +1,25 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-// @ts-ignore - netinfo types issue with expo
-import NetInfo from '@react-native-community/netinfo';
 import { useAuth } from './AuthContext';
 import { 
   getPendingMessages, 
-  clearPendingMessages,
+  replacePendingMessages,
   getOfflineMessages,
   saveMessagesOffline,
-  addPendingMessage 
+  addPendingMessage,
+  saveCompaniesOffline,
+  saveChatsOffline,
+  saveDepartmentsOffline,
+  saveTicketsOffline,
+  updateLastSync,
 } from '../lib/offlineStorage';
-import { getChatMessages, sendMessage as sendApiMessage } from '../lib/supabase';
+import {
+  getChatMessages,
+  getCompanyChats,
+  getCompanyTickets,
+  getDepartments,
+  getUserCompanies,
+  sendMessage as sendApiMessage,
+} from '../lib/supabase';
 
 interface SyncContextType {
   isSyncing: boolean;
@@ -38,10 +48,41 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   // Auto-sync when coming online
   useEffect(() => {
-    if (isOnline && profile && pendingCount > 0) {
-      syncNow();
+    if (!isOnline || !profile) return;
+    syncNow();
+  }, [isOnline, profile?.id]);
+
+  const warmupOfflineData = async () => {
+    try {
+      const companies = await getUserCompanies();
+      await saveCompaniesOffline(companies);
+
+      for (const company of companies) {
+        const [tickets, chats, departments] = await Promise.all([
+          getCompanyTickets(company.id),
+          getCompanyChats(company.id),
+          getDepartments(company.id),
+        ]);
+
+        await Promise.all([
+          saveTicketsOffline(tickets, company.id),
+          saveChatsOffline(company.id, chats),
+          saveDepartmentsOffline(company.id, departments),
+        ]);
+
+        await Promise.all(
+          chats.map(async (chat) => {
+            const messages = await getChatMessages(chat.id);
+            await saveMessagesOffline(chat.id, messages);
+          })
+        );
+      }
+
+      await updateLastSync();
+    } catch (error) {
+      console.error('Error warming up offline data:', error);
     }
-  }, [isOnline, pendingCount]);
+  };
 
   const syncNow = async () => {
     if (!isOnline || isSyncing || !profile) return;
@@ -49,17 +90,24 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     setIsSyncing(true);
     try {
       const pending = await getPendingMessages();
+      const failed: any[] = [];
       
       for (const message of pending) {
         try {
-          await sendApiMessage(message.chatId, message.content);
+          const sent = await sendApiMessage(message.chatId, message.content, message.options);
+          if (!sent) {
+            failed.push(message);
+          }
         } catch (error) {
           console.error('Error syncing message:', error);
+          failed.push(message);
         }
       }
       
-      await clearPendingMessages();
-      setPendingCount(0);
+      await replacePendingMessages(failed);
+      setPendingCount(failed.length);
+
+      await warmupOfflineData();
     } catch (error) {
       console.error('Sync error:', error);
     } finally {
@@ -110,10 +158,13 @@ export function useOfflineMessages(chatId: string) {
     }
   };
 
-  const sendMessage = async (content: string) => {
+  const sendMessage = async (
+    content: string,
+    options?: { messageType?: string; mediaUrl?: string; mediaName?: string }
+  ) => {
     if (isOnline) {
       // Send directly
-      const message = await sendApiMessage(chatId, content);
+      const message = await sendApiMessage(chatId, content, options);
       if (message) {
         setMessages(prev => [...prev, message]);
       }
@@ -125,13 +176,21 @@ export function useOfflineMessages(chatId: string) {
         chat_id: chatId,
         user_profile_id: profile?.id,
         content,
+        message_type: options?.messageType ?? 'text',
+        media_url: options?.mediaUrl,
+        media_name: options?.mediaName,
         attachments: [],
         created_at: new Date().toISOString(),
         pending: true,
       };
       
       setMessages(prev => [...prev, tempMessage]);
-      await addPendingMessage({ chatId, content });
+      await addPendingMessage({
+        chatId,
+        content,
+        options,
+        createdAt: tempMessage.created_at,
+      });
       return tempMessage;
     }
   };

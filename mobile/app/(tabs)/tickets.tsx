@@ -4,7 +4,14 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, getCompanyTickets, Company, Ticket } from '../../src/lib/supabase';
-import { getUserCompany, saveUserCompany } from '../../src/lib/offlineStorage';
+import {
+  getOfflineCompanies,
+  getOfflineTickets,
+  getUserCompany,
+  saveCompaniesOffline,
+  saveTicketsOffline,
+  saveUserCompany,
+} from '../../src/lib/offlineStorage';
 import { colors, spacing, borderRadius, shadows } from '../../src/theme';
 
 const statusLabels: Record<string, string> = {
@@ -22,7 +29,7 @@ const priorityLabels: Record<string, string> = {
 };
 
 export default function TicketsScreen() {
-  const { profile } = useAuth();
+  const { profile, isOnline } = useAuth();
   const router = useRouter();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,8 +41,12 @@ export default function TicketsScreen() {
 
   async function loadCompanies() {
     try {
-      const companiesData = await getUserCompanies();
+      const companiesData = isOnline ? await getUserCompanies() : await getOfflineCompanies();
       setCompanies(companiesData);
+
+      if (isOnline && companiesData.length > 0) {
+        await saveCompaniesOffline(companiesData);
+      }
 
       // Restaurar empresa salva ou usar a primeira
       const savedId = await getUserCompany();
@@ -54,10 +65,18 @@ export default function TicketsScreen() {
     if (!companyId) return;
     setLoading(true);
     try {
-      const ticketsData = await getCompanyTickets(companyId);
+      const ticketsData = isOnline
+        ? await getCompanyTickets(companyId)
+        : await getOfflineTickets(companyId);
+
+      if (isOnline) {
+        await saveTicketsOffline(ticketsData, companyId);
+      }
       setTickets(ticketsData);
     } catch (error) {
       console.error('Error loading tickets:', error);
+      const cachedTickets = await getOfflineTickets(companyId);
+      setTickets(cachedTickets);
     } finally {
       setLoading(false);
     }
@@ -71,7 +90,7 @@ export default function TicketsScreen() {
       if (id) await loadTickets(id);
       else setLoading(false);
     })();
-  }, [profile]);
+  }, [profile, isOnline]);
 
   // Recarregar chamados quando a aba recebe foco
   useFocusEffect(

@@ -4,13 +4,20 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, getCompanyTickets, Company, Ticket } from '../../src/lib/supabase';
-import { saveUserCompany, getUserCompany } from '../../src/lib/offlineStorage';
+import {
+  getOfflineCompanies,
+  getOfflineTickets,
+  getUserCompany,
+  saveCompaniesOffline,
+  saveTicketsOffline,
+  saveUserCompany,
+} from '../../src/lib/offlineStorage';
 import { api } from '../../src/lib/api';
 import { colors, spacing, borderRadius } from '../../src/theme';
 import KanuxLogo from '../../src/components/KanuxLogo';
 
 export default function HomeScreen() {
-  const { user, profile } = useAuth();
+  const { user, profile, isOnline } = useAuth();
   const router = useRouter();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [allCompanies, setAllCompanies] = useState<Company[]>([]);
@@ -24,11 +31,15 @@ export default function HomeScreen() {
 
   async function loadData() {
     try {
-      const companiesData = await getUserCompanies();
+      const companiesData = isOnline ? await getUserCompanies() : await getOfflineCompanies();
       setCompanies(companiesData);
 
+      if (isOnline && companiesData.length > 0) {
+        await saveCompaniesOffline(companiesData);
+      }
+
       let companyList = companiesData;
-      if (isSuperAdmin) {
+      if (isSuperAdmin && isOnline) {
         const { supabase } = await import('../../src/lib/supabase');
         const { data: allData } = await supabase.from('companies').select('*').order('name');
         companyList = allData || companiesData;
@@ -43,11 +54,19 @@ export default function HomeScreen() {
         const active = valid || availableCompanies[0];
         setSelectedCompany(active);
         if (!valid) await saveUserCompany(active.id);
-        const ticketsData = await getCompanyTickets(active.id);
+
+        const ticketsData = isOnline
+          ? await getCompanyTickets(active.id)
+          : await getOfflineTickets(active.id);
+
+        if (isOnline) {
+          await saveTicketsOffline(ticketsData, active.id);
+        }
+
         setRecentTickets(ticketsData.slice(0, 5));
 
         // Check if user is ADMIN or SUPER_ADMIN in any company
-        if (!isSuperAdmin) {
+        if (!isSuperAdmin && isOnline) {
           try {
             const membersRes = await api.getCompanyMembers(active.id);
             const myMem = (membersRes?.data || []).find((m: any) => m.user_profile_id === profile?.id);
@@ -55,12 +74,21 @@ export default function HomeScreen() {
               setIsAdminOrAbove(true);
             }
           } catch { /* ignore */ }
-        } else {
+        } else if (isSuperAdmin) {
           setIsAdminOrAbove(true);
         }
       }
     } catch (error) {
       console.error('Error loading data:', error);
+      const fallbackCompanies = await getOfflineCompanies();
+      setCompanies(fallbackCompanies);
+      const savedId = await getUserCompany();
+      const active = fallbackCompanies.find(c => c.id === savedId) || fallbackCompanies[0] || null;
+      setSelectedCompany(active);
+      if (active) {
+        const cachedTickets = await getOfflineTickets(active.id);
+        setRecentTickets(cachedTickets.slice(0, 5));
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -70,7 +98,7 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!user || !profile) { setLoading(false); return; }
     loadData();
-  }, [user, profile?.is_super_admin]);
+  }, [user, profile?.is_super_admin, isOnline]);
 
   function onRefresh() {
     if (!user || !profile) return;
@@ -80,7 +108,14 @@ export default function HomeScreen() {
   async function handleSelectCompany(company: Company) {
     setSelectedCompany(company);
     await saveUserCompany(company.id);
-    const ticketsData = await getCompanyTickets(company.id);
+    const ticketsData = isOnline
+      ? await getCompanyTickets(company.id)
+      : await getOfflineTickets(company.id);
+
+    if (isOnline) {
+      await saveTicketsOffline(ticketsData, company.id);
+    }
+
     setRecentTickets(ticketsData.slice(0, 5));
   }
 

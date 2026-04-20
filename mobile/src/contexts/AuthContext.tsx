@@ -25,6 +25,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading]   = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const retryTimer = useRef<any>(null);
+  const userRef = useRef<User | null>(null);
+  const previousOnlineRef = useRef<boolean | null>(null);
+  const hadOfflineSessionRef = useRef(false);
 
   /** Load profile from backend; retries every 8s if backend returns nothing (e.g. 403 during deploy). */
   const loadProfile = async (sessionUser: User, attempt = 0) => {
@@ -55,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setUser(null);
     setProfile(null);
+    hadOfflineSessionRef.current = false;
   };
 
   useEffect(() => {
@@ -69,12 +73,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const unsubscribeNet = NetInfo.addEventListener((state: any) => {
-      setIsOnline(state.isConnected ?? false);
+      const onlineNow = state.isConnected ?? false;
+      setIsOnline(onlineNow);
+
+      if (previousOnlineRef.current === null) {
+        previousOnlineRef.current = onlineNow;
+        return;
+      }
+
+      const hadConnection = previousOnlineRef.current;
+      const currentUser = userRef.current;
+
+      if (currentUser && hadConnection && !onlineNow) {
+        hadOfflineSessionRef.current = true;
+      }
+
+      if (currentUser && !hadConnection && onlineNow && hadOfflineSessionRef.current) {
+        hadOfflineSessionRef.current = false;
+        signOut().catch((error) => {
+          console.error('Error forcing re-login after reconnect:', error);
+        });
+      }
+
+      previousOnlineRef.current = onlineNow;
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      userRef.current = session?.user ?? null;
 
       if (session?.access_token) setAuthToken(session.access_token);
 
@@ -89,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (retryTimer.current) clearTimeout(retryTimer.current);
       setSession(session);
       setUser(session?.user ?? null);
+      userRef.current = session?.user ?? null;
       setAuthToken(session?.access_token ?? null);
 
       if (session?.user) {

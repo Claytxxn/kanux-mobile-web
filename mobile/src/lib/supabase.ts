@@ -238,18 +238,24 @@ export async function getCompanyChats(companyId: string): Promise<Chat[]> {
 }
 
 // Helper to get messages for a chat
+// O backend retorna em ordem ASC (mais antigas primeiro) — NÃO invertemos aqui.
+// buildListItems espera ASC e faz .reverse() para o FlatList inverted=true.
 export async function getChatMessages(chatId: string, limit = 50): Promise<Message[]> {
   try {
     const result = await api.getMessages(chatId);
-    return (result.data || []).reverse();
+    return result.data || [];
   } catch (error) {
     console.error('Error fetching messages:', error);
     return [];
   }
 }
 
-// Helper to send a message
-export async function sendMessage(chatId: string, content: string): Promise<Message | null> {
+// Helper to send a message (texto ou mídia)
+export async function sendMessage(
+  chatId: string,
+  content: string,
+  options?: { messageType?: string; mediaUrl?: string; mediaName?: string }
+): Promise<Message | null> {
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -257,7 +263,7 @@ export async function sendMessage(chatId: string, content: string): Promise<Mess
   if (!profile) return null;
 
   try {
-    const result = await api.sendMessage(chatId, content, profile.id);
+    const result = await api.sendMessage(chatId, content, profile.id, options);
     return result.data || null;
   } catch (error) {
     console.error('Error sending message:', error);

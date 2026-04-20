@@ -2,8 +2,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEYS = {
-  MESSAGES: 'offline_messages',
-  TICKETS: 'offline_tickets',
+  MESSAGES_PREFIX: 'offline_messages_',
+  TICKETS_PREFIX: 'offline_tickets_',
+  CHATS_PREFIX: 'offline_chats_',
+  DEPARTMENTS_PREFIX: 'offline_departments_',
+  COMPANIES: 'offline_companies',
   PENDING_MESSAGES: 'pending_messages',
   PENDING_TICKETS: 'pending_tickets',
   LAST_SYNC: 'last_sync',
@@ -13,7 +16,7 @@ const STORAGE_KEYS = {
 // Messages storage
 export async function saveMessagesOffline(chatId: string, messages: any[]): Promise<void> {
   try {
-    const key = `${STORAGE_KEYS.MESSAGES}_${chatId}`;
+    const key = `${STORAGE_KEYS.MESSAGES_PREFIX}${chatId}`;
     await AsyncStorage.setItem(key, JSON.stringify(messages));
   } catch (error) {
     console.error('Error saving messages offline:', error);
@@ -22,7 +25,7 @@ export async function saveMessagesOffline(chatId: string, messages: any[]): Prom
 
 export async function getOfflineMessages(chatId: string): Promise<any[]> {
   try {
-    const key = `${STORAGE_KEYS.MESSAGES}_${chatId}`;
+    const key = `${STORAGE_KEYS.MESSAGES_PREFIX}${chatId}`;
     const data = await AsyncStorage.getItem(key);
     return data ? JSON.parse(data) : [];
   } catch (error) {
@@ -32,20 +35,84 @@ export async function getOfflineMessages(chatId: string): Promise<any[]> {
 }
 
 // Tickets storage
-export async function saveTicketsOffline(tickets: any[]): Promise<void> {
+export async function saveTicketsOffline(tickets: any[], companyId?: string): Promise<void> {
   try {
-    await AsyncStorage.setItem(STORAGE_KEYS.TICKETS, JSON.stringify(tickets));
+    if (companyId) {
+      await AsyncStorage.setItem(`${STORAGE_KEYS.TICKETS_PREFIX}${companyId}`, JSON.stringify(tickets));
+      return;
+    }
+    await AsyncStorage.setItem(`${STORAGE_KEYS.TICKETS_PREFIX}default`, JSON.stringify(tickets));
   } catch (error) {
     console.error('Error saving tickets offline:', error);
   }
 }
 
-export async function getOfflineTickets(): Promise<any[]> {
+export async function getOfflineTickets(companyId?: string): Promise<any[]> {
   try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.TICKETS);
+    const key = companyId
+      ? `${STORAGE_KEYS.TICKETS_PREFIX}${companyId}`
+      : `${STORAGE_KEYS.TICKETS_PREFIX}default`;
+    const data = await AsyncStorage.getItem(key);
     return data ? JSON.parse(data) : [];
   } catch (error) {
     console.error('Error getting offline tickets:', error);
+    return [];
+  }
+}
+
+// Companies storage
+export async function saveCompaniesOffline(companies: any[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.COMPANIES, JSON.stringify(companies));
+  } catch (error) {
+    console.error('Error saving companies offline:', error);
+  }
+}
+
+export async function getOfflineCompanies(): Promise<any[]> {
+  try {
+    const data = await AsyncStorage.getItem(STORAGE_KEYS.COMPANIES);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error getting offline companies:', error);
+    return [];
+  }
+}
+
+// Chats storage
+export async function saveChatsOffline(companyId: string, chats: any[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(`${STORAGE_KEYS.CHATS_PREFIX}${companyId}`, JSON.stringify(chats));
+  } catch (error) {
+    console.error('Error saving chats offline:', error);
+  }
+}
+
+export async function getOfflineChats(companyId: string): Promise<any[]> {
+  try {
+    const data = await AsyncStorage.getItem(`${STORAGE_KEYS.CHATS_PREFIX}${companyId}`);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error getting chats offline:', error);
+    return [];
+  }
+}
+
+// Departments storage
+export async function saveDepartmentsOffline(companyId: string, departments: any[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(`${STORAGE_KEYS.DEPARTMENTS_PREFIX}${companyId}`, JSON.stringify(departments));
+  } catch (error) {
+    console.error('Error saving departments offline:', error);
+  }
+}
+
+export async function getOfflineDepartments(companyId: string): Promise<any[]> {
+  try {
+    const data = await AsyncStorage.getItem(`${STORAGE_KEYS.DEPARTMENTS_PREFIX}${companyId}`);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error getting departments offline:', error);
     return [];
   }
 }
@@ -76,6 +143,14 @@ export async function clearPendingMessages(): Promise<void> {
     await AsyncStorage.removeItem(STORAGE_KEYS.PENDING_MESSAGES);
   } catch (error) {
     console.error('Error clearing pending messages:', error);
+  }
+}
+
+export async function replacePendingMessages(messages: any[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.PENDING_MESSAGES, JSON.stringify(messages));
+  } catch (error) {
+    console.error('Error replacing pending messages:', error);
   }
 }
 
@@ -147,8 +222,21 @@ export async function getLastSync(): Promise<Date | null> {
 // Clear all offline data
 export async function clearAllOfflineData(): Promise<void> {
   try {
-    const keys = Object.values(STORAGE_KEYS);
-    await AsyncStorage.multiRemove(keys);
+    const allKeys = await AsyncStorage.getAllKeys();
+    const dynamicKeys = allKeys.filter((key) =>
+      key.startsWith(STORAGE_KEYS.MESSAGES_PREFIX) ||
+      key.startsWith(STORAGE_KEYS.TICKETS_PREFIX) ||
+      key.startsWith(STORAGE_KEYS.CHATS_PREFIX) ||
+      key.startsWith(STORAGE_KEYS.DEPARTMENTS_PREFIX)
+    );
+    const fixedKeys = [
+      STORAGE_KEYS.COMPANIES,
+      STORAGE_KEYS.PENDING_MESSAGES,
+      STORAGE_KEYS.PENDING_TICKETS,
+      STORAGE_KEYS.LAST_SYNC,
+      STORAGE_KEYS.USER_COMPANY,
+    ];
+    await AsyncStorage.multiRemove([...fixedKeys, ...dynamicKeys]);
   } catch (error) {
     console.error('Error clearing offline data:', error);
   }

@@ -301,10 +301,21 @@ export const api = {
     return apiRequest(`/api/chats/${chatId}/typing`, { method: 'GET' });
   },
 
-  async sendMessage(chatId: string, content: string, userProfileId: string) {
+  async sendMessage(
+    chatId: string,
+    content: string,
+    userProfileId: string,
+    options?: { messageType?: string; mediaUrl?: string; mediaName?: string }
+  ) {
     return apiRequest(`/api/chats/${chatId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ content, user_profile_id: userProfileId }),
+      body: JSON.stringify({
+        content,
+        user_profile_id: userProfileId,
+        message_type: options?.messageType ?? 'text',
+        media_url: options?.mediaUrl,
+        media_name: options?.mediaName,
+      }),
     });
   },
 

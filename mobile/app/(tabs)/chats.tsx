@@ -4,7 +4,16 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, getCompanyChats, Chat, getDepartments, Department, Company } from '../../src/lib/supabase';
-import { getUserCompany, saveUserCompany } from '../../src/lib/offlineStorage';
+import {
+  getOfflineChats,
+  getOfflineCompanies,
+  getOfflineDepartments,
+  getUserCompany,
+  saveChatsOffline,
+  saveCompaniesOffline,
+  saveDepartmentsOffline,
+  saveUserCompany,
+} from '../../src/lib/offlineStorage';
 import { api } from '../../src/lib/api';
 import { colors, spacing, borderRadius } from '../../src/theme';
 
@@ -13,7 +22,7 @@ interface ChatWithDepartment extends Chat {
 }
 
 export default function ChatsScreen() {
-  const { user, profile } = useAuth();
+  const { user, profile, isOnline } = useAuth();
   const router = useRouter();
   const [chats, setChats] = useState<ChatWithDepartment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,8 +39,13 @@ export default function ChatsScreen() {
 
   async function loadData() {
     try {
-      const companiesList = await getUserCompanies();
+      const companiesList = isOnline ? await getUserCompanies() : await getOfflineCompanies();
       setCompanies(companiesList);
+
+      if (isOnline && companiesList.length > 0) {
+        await saveCompaniesOffline(companiesList);
+      }
+
       // Usa empresa salva ou a primeira
       const savedId = await getUserCompany();
       const valid = companiesList.find(c => c.id === savedId);
@@ -50,10 +64,17 @@ export default function ChatsScreen() {
 
   async function loadChatsForCompany(cId: string) {
     try {
-      const [chatsData, depts] = await Promise.all([
-        getCompanyChats(cId),
-        getDepartments(cId),
-      ]);
+      const [chatsData, depts] = isOnline
+        ? await Promise.all([getCompanyChats(cId), getDepartments(cId)])
+        : await Promise.all([getOfflineChats(cId), getOfflineDepartments(cId)]);
+
+      if (isOnline) {
+        await Promise.all([
+          saveChatsOffline(cId, chatsData),
+          saveDepartmentsOffline(cId, depts),
+        ]);
+      }
+
       setDepartments(depts);
       const chatsWithDept: ChatWithDepartment[] = chatsData.map(c => ({
         ...c,
@@ -62,6 +83,17 @@ export default function ChatsScreen() {
       setChats(chatsWithDept);
     } catch (error) {
       console.error('Erro ao carregar chats:', error);
+      const [cachedChats, cachedDepartments] = await Promise.all([
+        getOfflineChats(cId),
+        getOfflineDepartments(cId),
+      ]);
+      setDepartments(cachedDepartments);
+      setChats(
+        cachedChats.map(c => ({
+          ...c,
+          department: cachedDepartments.find(d => d.id === c.department_id) || undefined,
+        }))
+      );
     }
   }
 
@@ -77,7 +109,7 @@ export default function ChatsScreen() {
   useEffect(() => {
     if (!user || !profile) { setLoading(false); return; }
     loadData();
-  }, [user, profile]);
+  }, [user, profile, isOnline]);
 
   useFocusEffect(
     useCallback(() => {
