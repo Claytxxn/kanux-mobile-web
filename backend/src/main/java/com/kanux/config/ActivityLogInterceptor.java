@@ -1,6 +1,5 @@
 package com.kanux.config;
 
-import com.kanux.entity.ActivityLog;
 import com.kanux.entity.CompanyMember;
 import com.kanux.entity.UserProfile;
 import com.kanux.repository.ActivityLogRepository;
@@ -9,7 +8,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -22,6 +22,7 @@ import java.util.UUID;
  * Interceptor que registra toda requisição autenticada na tabela activity_logs.
  * Roda de forma assíncrona para não impactar a performance dos endpoints.
  */
+@SuppressWarnings("unused")
 @Component
 public class ActivityLogInterceptor implements HandlerInterceptor {
 
@@ -43,14 +44,15 @@ public class ActivityLogInterceptor implements HandlerInterceptor {
     }
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+                              @NonNull Object handler) {
         request.setAttribute(START_TIME_ATTR, System.currentTimeMillis());
         return true;
     }
 
     @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
-                                 Object handler, Exception ex) {
+    public void afterCompletion(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+                                 @NonNull Object handler, @Nullable Exception ex) {
         // Ignora health-check, debug e actuation endpoints
         String uri = request.getRequestURI();
         if (uri.startsWith("/api/health") || uri.startsWith("/api/debug") ||
@@ -62,7 +64,9 @@ public class ActivityLogInterceptor implements HandlerInterceptor {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof UserProfile profile)) return;
 
-        long start = request.getAttribute(START_TIME_ATTR) instanceof Long l ? l : System.currentTimeMillis();
+        Object startAttr = request.getAttribute(START_TIME_ATTR);
+        Long storedStart = (startAttr instanceof Long) ? (Long) startAttr : null;
+        long start = storedStart != null ? storedStart : System.currentTimeMillis();
         long duration = System.currentTimeMillis() - start;
         int status = response.getStatus();
         String method = request.getMethod();
