@@ -35,16 +35,19 @@ interface DashboardStats {
 
 interface LogEntry {
   id: string;
-  type: 'MESSAGE' | 'TICKET';
+  type: string; // LOGIN | PROFILE | MESSAGE | TICKET | CHAT | MEMBER | USER | DEPARTMENT | COMPANY | ADMIN | ERROR | CREATE | UPDATE | DELETE | READ
   method: string;
   endpoint: string;
   status: number;
   status_text: string;
+  description?: string;
   content_preview?: string;
   message_type?: string;
   media_url?: string;
   user_profile_id?: string;
   user_name?: string;
+  ip_address?: string;
+  duration_ms?: number;
   created_at: string;
   chat_id?: string;
   chat_name?: string;
@@ -54,12 +57,32 @@ interface LogEntry {
 
 interface Filters {
   search: string;
-  type: 'ALL' | 'MESSAGE' | 'TICKET';
-  method: 'ALL' | 'POST' | 'PUT' | 'DELETE';
+  type: string; // 'ALL' | action types
+  method: 'ALL' | 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   status: 'ALL' | '2xx' | '4xx' | '5xx';
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const ACTION_TYPE_CONFIG: Record<string, { color: string; icon: string; label: string }> = {
+  LOGIN:      { color: '#23A559', icon: 'log-in-outline',       label: 'Login'      },
+  PROFILE:    { color: '#3B82F6', icon: 'person-outline',       label: 'Perfil'     },
+  MESSAGE:    { color: '#5865F2', icon: 'chatbubble-outline',   label: 'Mensagem'   },
+  TICKET:     { color: '#F0B232', icon: 'ticket-outline',       label: 'Ticket'     },
+  CHAT:       { color: '#06B6D4', icon: 'chatbubbles-outline',  label: 'Chat'       },
+  MEMBER:     { color: '#8B5CF6', icon: 'people-outline',       label: 'Membro'     },
+  USER:       { color: '#EC4899', icon: 'person-circle-outline',label: 'Usuário'    },
+  DEPARTMENT: { color: '#F97316', icon: 'layers-outline',       label: 'Depart.'    },
+  COMPANY:    { color: '#14B8A6', icon: 'business-outline',     label: 'Empresa'    },
+  ADMIN:      { color: '#A855F7', icon: 'shield-outline',       label: 'Admin'      },
+  ERROR:      { color: '#ED4245', icon: 'alert-circle-outline', label: 'Erro'       },
+  CREATE:     { color: '#23A559', icon: 'add-circle-outline',   label: 'Criação'    },
+  UPDATE:     { color: '#F0B232', icon: 'pencil-outline',       label: 'Atualiz.'   },
+  DELETE:     { color: '#ED4245', icon: 'trash-outline',        label: 'Exclusão'   },
+  READ:       { color: '#80848E', icon: 'eye-outline',          label: 'Leitura'    },
+};
+
+const ALL_ACTION_TYPES = ['ALL', 'LOGIN', 'MESSAGE', 'TICKET', 'CHAT', 'MEMBER', 'USER', 'DEPARTMENT', 'COMPANY', 'ADMIN', 'ERROR', 'PROFILE'];
 
 const METHOD_COLORS: Record<string, string> = {
   GET:    '#3B82F6',
@@ -137,12 +160,11 @@ function MethodBadge({ method }: { method: string }) {
 }
 
 function TypeBadge({ type }: { type: string }) {
-  const color = type === 'MESSAGE' ? '#5865F2' : '#F0B232';
-  const icon = type === 'MESSAGE' ? 'chatbubble-outline' : 'ticket-outline';
+  const cfg = ACTION_TYPE_CONFIG[type] ?? { color: '#80848E', icon: 'ellipse-outline', label: type };
   return (
-    <View style={[styles.typeBadge, { backgroundColor: color + '22', borderColor: color }]}>
-      <Ionicons name={icon as any} size={10} color={color} />
-      <Text style={[styles.typeBadgeText, { color }]}>{type === 'MESSAGE' ? 'MSG' : 'TKT'}</Text>
+    <View style={[styles.typeBadge, { backgroundColor: cfg.color + '22', borderColor: cfg.color }]}>
+      <Ionicons name={cfg.icon as any} size={10} color={cfg.color} />
+      <Text style={[styles.typeBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
     </View>
   );
 }
@@ -160,7 +182,9 @@ function LogItem({ item, onPress }: { item: LogEntry; onPress: () => void }) {
           </View>
         </View>
         <Text style={styles.logEndpoint} numberOfLines={1}>{item.endpoint}</Text>
-        {item.content_preview ? (
+        {item.description ? (
+          <Text style={styles.logPreview} numberOfLines={2}>{item.description}</Text>
+        ) : item.content_preview ? (
           <Text style={styles.logPreview} numberOfLines={2}>{item.content_preview}</Text>
         ) : null}
         <View style={styles.logMeta}>
@@ -168,6 +192,12 @@ function LogItem({ item, onPress }: { item: LogEntry; onPress: () => void }) {
             <View style={styles.logMetaItem}>
               <Ionicons name="person-outline" size={11} color={colors.textMuted} />
               <Text style={styles.logMetaText}>{item.user_name}</Text>
+            </View>
+          ) : null}
+          {item.duration_ms != null ? (
+            <View style={styles.logMetaItem}>
+              <Ionicons name="timer-outline" size={11} color={colors.textMuted} />
+              <Text style={styles.logMetaText}>{item.duration_ms}ms</Text>
             </View>
           ) : null}
           {item.chat_name ? (
@@ -207,8 +237,11 @@ function LogDetailModal({ item, visible, onClose }: { item: LogEntry | null; vis
     { label: 'Método', value: item.method, color: getMethodColor(item.method) },
     { label: 'Endpoint', value: item.endpoint },
     { label: 'Status', value: `${item.status} ${item.status_text}`, color: getStatusColor(item.status) },
-    { label: 'Data/Hora', value: formatDate(item.created_at) },
     { label: 'Usuário', value: item.user_name ?? item.user_profile_id },
+    { label: 'IP', value: item.ip_address },
+    { label: 'Duração', value: item.duration_ms != null ? `${item.duration_ms}ms` : undefined },
+    { label: 'Descrição', value: item.description },
+    { label: 'Data/Hora', value: formatDate(item.created_at) },
     { label: 'Conteúdo', value: item.content_preview },
     { label: 'Chat', value: item.chat_name ?? item.chat_id },
     { label: 'Status Ticket', value: item.ticket_status, color: item.ticket_status ? TICKET_STATUS_COLORS[item.ticket_status] : undefined },
@@ -338,6 +371,7 @@ export default function AdminLogsScreen() {
       if (filters.search) {
         const q = filters.search.toLowerCase();
         return (
+          (entry.description ?? '').toLowerCase().includes(q) ||
           (entry.content_preview ?? '').toLowerCase().includes(q) ||
           (entry.endpoint ?? '').toLowerCase().includes(q) ||
           (entry.user_name ?? '').toLowerCase().includes(q) ||
@@ -555,29 +589,36 @@ export default function AdminLogsScreen() {
                   ) : null}
                 </View>
 
-                {/* Type filter */}
+                {/* Type / Action filter */}
                 <View style={styles.filterGroup}>
-                  <Text style={styles.filterGroupLabel}>Tipo</Text>
-                  <View style={styles.filterChips}>
-                    {(['ALL', 'MESSAGE', 'TICKET'] as const).map(v => (
-                      <TouchableOpacity
-                        key={v}
-                        style={[styles.chip, filters.type === v && styles.chipActive]}
-                        onPress={() => setFilters(f => ({ ...f, type: v }))}
-                      >
-                        <Text style={[styles.chipText, filters.type === v && styles.chipTextActive]}>
-                          {v === 'ALL' ? 'Todos' : v === 'MESSAGE' ? 'Mensagem' : 'Ticket'}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  <Text style={styles.filterGroupLabel}>Tipo de Atividade</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
+                    <View style={[styles.filterChips, { flexWrap: 'nowrap' }]}>
+                      {ALL_ACTION_TYPES.map(v => {
+                        const cfg = v !== 'ALL' ? ACTION_TYPE_CONFIG[v] : null;
+                        const isActive = filters.type === v;
+                        return (
+                          <TouchableOpacity
+                            key={v}
+                            style={[styles.chip, isActive && styles.chipActive, cfg && { borderColor: cfg.color + '88' }]}
+                            onPress={() => setFilters(f => ({ ...f, type: v }))}
+                          >
+                            {cfg && <Ionicons name={cfg.icon as any} size={10} color={isActive ? cfg.color : colors.textMuted} style={{ marginRight: 3 }} />}
+                            <Text style={[styles.chipText, isActive && (cfg ? { color: cfg.color } : styles.chipTextActive)]}>
+                              {v === 'ALL' ? 'Todos' : (cfg?.label ?? v)}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
                 </View>
 
                 {/* Method filter */}
                 <View style={styles.filterGroup}>
-                  <Text style={styles.filterGroupLabel}>Método</Text>
+                  <Text style={styles.filterGroupLabel}>Método HTTP</Text>
                   <View style={styles.filterChips}>
-                    {(['ALL', 'POST', 'PUT', 'DELETE'] as const).map(v => (
+                    {(['ALL', 'GET', 'POST', 'PUT', 'DELETE'] as const).map(v => (
                       <TouchableOpacity
                         key={v}
                         style={[styles.chip, filters.method === v && styles.chipActive, v !== 'ALL' && { borderColor: getMethodColor(v) + '88' }]}
