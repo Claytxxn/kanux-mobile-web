@@ -486,6 +486,21 @@ export default function AdminScreen() {
               <Ionicons name="folder" size={18} color={colors.primary} />
               <Text style={styles.statNumber2}>{departments.length} departamentos</Text>
             </View>
+            {/* ── Logs Button ── */}
+            {currentCompanyId ? (
+              <TouchableOpacity
+                style={styles.logsNavButton}
+                onPress={() => router.push({ pathname: '/admin/logs' } as any)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="pulse-outline" size={18} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.logsNavTitle}>Log de Atividades</Text>
+                  <Text style={styles.logsNavSub}>Ver histórico de mensagens, tickets e acessos</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+            ) : null}
           </View>
         )}
 
@@ -1068,6 +1083,14 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 22, fontWeight: '700', color: colors.text },
   statNumber2: { fontSize: 15, fontWeight: '600', color: colors.text },
   statLabel: { fontSize: 11, color: colors.textMuted },
+  logsNavButton: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.surface, borderRadius: borderRadius.md,
+    borderWidth: 1, borderColor: colors.primary + '44',
+    padding: spacing.md, marginTop: spacing.sm,
+  },
+  logsNavTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
+  logsNavSub: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
   // Membros
   memberItem: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,

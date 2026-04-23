@@ -1,18 +1,16 @@
 import { useEffect, useRef } from 'react';
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { Platform, AppState } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { api } from '../lib/api';
 
-// Configurar como as notificações aparecem quando o app está em primeiro plano
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+const isExpoGo = Constants.appOwnership === 'expo';
+
+async function getNotificationsModule() {
+  const Notifications = await import('expo-notifications');
+  return Notifications;
+}
 
 /**
  * Hook para registrar e exibir notificações locais quando novas mensagens chegam.
@@ -25,11 +23,31 @@ export function useNotifications(activeChatId?: string) {
   const lastMessageIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    if (isExpoGo) return;
+    let mounted = true;
+    (async () => {
+      const Notifications = await getNotificationsModule();
+      if (!mounted) return;
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+        }),
+      });
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     activeChatRef.current = activeChatId;
   }, [activeChatId]);
 
   // Solicitar permissão de notificação
   useEffect(() => {
+    if (isExpoGo) return;
     requestNotificationPermission();
   }, []);
 
@@ -53,6 +71,8 @@ export function useNotifications(activeChatId?: string) {
           if (lastMessageIds.current.has(msg.id)) return;
           lastMessageIds.current.add(msg.id);
 
+          if (isExpoGo) return;
+
           // Ignorar se o usuário está no chat que recebeu a mensagem E o app está ativo
           const appIsActive = AppState.currentState === 'active';
           if (appIsActive && activeChatRef.current === msg.chat_id) return;
@@ -73,6 +93,7 @@ export function useNotifications(activeChatId?: string) {
           else if (msg.message_type === 'document') body = `📄 ${msg.media_name || 'Documento'}`;
           else if (body.length > 60) body = body.substring(0, 60) + '...';
 
+          const Notifications = await getNotificationsModule();
           await Notifications.scheduleNotificationAsync({
             content: {
               title: `${senderName} em ${chatName}`,
@@ -91,6 +112,8 @@ export function useNotifications(activeChatId?: string) {
 }
 
 async function requestNotificationPermission() {
+  const Notifications = await getNotificationsModule();
+
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('messages', {
       name: 'Mensagens',

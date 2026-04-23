@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { Ticket, TicketComment, getTicketComments, addTicketComment, updateTicketStatus, getUserProfile, supabase } from '../../src/lib/supabase';
 import { api } from '../../src/lib/api';
+import { ENV } from '../../src/lib/env';
 import { colors, spacing } from '../../src/theme';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -75,18 +76,35 @@ export default function TicketScreen() {
 
   async function uploadTicketPhoto(uri: string, fileName: string, mimeType: string): Promise<string | null> {
     try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
       const filePath = `tickets/${id}/${Date.now()}_${fileName}`;
-      const { error } = await supabase.storage
-        .from('chat-media')
-        .upload(filePath, blob, { contentType: mimeType, upsert: false });
-      if (error) {
-        console.error('Erro no upload da foto do ticket:', error);
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        console.error('Upload: sem sessão autenticada');
         return null;
       }
-      const { data } = supabase.storage.from('chat-media').getPublicUrl(filePath);
-      return data?.publicUrl ?? null;
+
+      const formData = new FormData();
+      formData.append('file', { uri, name: fileName, type: mimeType } as any);
+
+      const uploadRes = await fetch(`${ENV.SUPABASE_URL}/storage/v1/object/chat-media/${filePath}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'apikey': ENV.SUPABASE_ANON_KEY,
+          'x-upsert': 'false',
+        },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        console.error('Erro no upload da foto do ticket:', errText);
+        return null;
+      }
+
+      return `${ENV.SUPABASE_URL}/storage/v1/object/public/chat-media/${filePath}`;
     } catch (error) {
       console.error('Erro ao enviar foto do ticket:', error);
       return null;

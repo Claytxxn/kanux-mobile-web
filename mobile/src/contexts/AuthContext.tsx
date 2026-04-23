@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useState, useRef, ReactNod
 import NetInfo from '@react-native-community/netinfo';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, getUserProfile, getUserCompanies, Profile } from '../lib/supabase';
-import { saveUserCompany } from '../lib/offlineStorage';
+import { saveUserCompany, saveProfileOffline, getOfflineProfile } from '../lib/offlineStorage';
 import { setAuthToken, setTokenProvider, initApi } from '../lib/api';
 
 interface AuthContextType {
@@ -34,10 +34,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const profileData = await getUserProfile(sessionUser.id);
     if (profileData) {
       setProfile(profileData);
+      // Salva perfil offline para uso quando sem internet
+      saveProfileOffline(profileData).catch(() => {});
       try {
         const companies = await getUserCompanies();
         if (companies.length > 0) await saveUserCompany(companies[0].id);
       } catch { /* non-fatal */ }
+    } else if (attempt === 0) {
+      // Tenta carregar do cache offline enquanto backend não responde
+      const cached = await getOfflineProfile();
+      if (cached) {
+        console.log('💾 Usando perfil do cache offline');
+        setProfile(cached);
+      }
+      // Continua tentando em background
+      const delay = 8000;
+      console.warn(`⚠️ Profile unavailable, retry in ${delay / 1000}s (attempt ${attempt + 1}/5)`);
+      retryTimer.current = setTimeout(() => loadProfile(sessionUser, attempt + 1), delay);
     } else if (attempt < 5) {
       // Backend might still be deploying — retry with backoff
       const delay = Math.min((attempt + 1) * 8000, 30000);
@@ -89,10 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (currentUser && !hadConnection && onlineNow && hadOfflineSessionRef.current) {
+        // Ao reconectar: NÃO forçar logout — manter sessão e apenas marcar para sync
         hadOfflineSessionRef.current = false;
-        signOut().catch((error) => {
-          console.error('Error forcing re-login after reconnect:', error);
-        });
+        console.log('🔄 Reconectado — sessão mantida, sync será feito pelo SyncContext');
       }
 
       previousOnlineRef.current = onlineNow;

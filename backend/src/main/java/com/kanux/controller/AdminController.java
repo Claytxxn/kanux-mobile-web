@@ -41,6 +41,8 @@ import com.kanux.entity.Company;
 import com.kanux.entity.CompanyMember;
 import com.kanux.entity.Ticket;
 import com.kanux.entity.UserProfile;
+import com.kanux.entity.ActivityLog;
+import com.kanux.repository.ActivityLogRepository;
 import com.kanux.repository.ChatRepository;
 import com.kanux.repository.CompanyMemberRepository;
 import com.kanux.repository.CompanyRepository;
@@ -66,16 +68,19 @@ public class AdminController {
     private final ChatRepository chatRepository;
     private final MessageRepository messageRepository;
     private final TicketRepository ticketRepository;
+    private final ActivityLogRepository activityLogRepository;
 
     public AdminController(CompanyRepository companyRepository, CompanyMemberRepository memberRepository,
             UserProfileRepository userProfileRepository, ChatRepository chatRepository,
-            MessageRepository messageRepository, TicketRepository ticketRepository) {
+            MessageRepository messageRepository, TicketRepository ticketRepository,
+            ActivityLogRepository activityLogRepository) {
         this.companyRepository = companyRepository;
         this.memberRepository = memberRepository;
         this.userProfileRepository = userProfileRepository;
         this.chatRepository = chatRepository;
         this.messageRepository = messageRepository;
         this.ticketRepository = ticketRepository;
+        this.activityLogRepository = activityLogRepository;
     }
 
     @GetMapping("/companies")
@@ -443,73 +448,29 @@ public class AdminController {
         stats.put("tickets_resolved", ticketsResolved);
         stats.put("total_members", members.size());
 
-        // Recent activity log (last 50 messages + tickets)
-        List<Map<String, Object>> logs = new java.util.ArrayList<>();
+        // Activity logs reais da tabela activity_logs (últimos 100)
+        List<ActivityLog> rawLogs = activityLogRepository
+                .findByCompanyIdOrderByCreatedAtDesc(cId, PageRequest.of(0, 100));
 
-        // Recent messages
-        if (!chatIds.isEmpty()) {
-            List<com.kanux.entity.Message> recentMessages = messageRepository
-                    .findByChatIdInOrderByCreatedAtDesc(chatIds, PageRequest.of(0, 50));
-            for (com.kanux.entity.Message m : recentMessages) {
-                Map<String, Object> entry = new LinkedHashMap<>();
-                entry.put("id", m.getId());
-                entry.put("type", "MESSAGE");
-                entry.put("method", "POST");
-                entry.put("endpoint", "/api/chats/" + m.getChatId() + "/messages");
-                entry.put("status", 200);
-                entry.put("status_text", "OK");
-                entry.put("message_type", m.getMessageType());
-                entry.put("content_preview", m.getContent() != null && m.getContent().length() > 60
-                        ? m.getContent().substring(0, 60) + "..."
-                        : m.getContent());
-                entry.put("media_url", m.getMediaUrl());
-                entry.put("user_profile_id", m.getUserProfileId());
-                entry.put("created_at", m.getCreatedAt());
-                entry.put("chat_id", m.getChatId());
-                // Find chat name
-                chats.stream().filter(c -> c.getId().equals(m.getChatId())).findFirst()
-                        .ifPresent(c -> entry.put("chat_name", c.getName()));
-                // Find member display name
-                members.stream().filter(mem -> mem.getUserProfileId().equals(m.getUserProfileId())).findFirst()
-                        .ifPresent(mem -> {
-                            if (mem.getUserProfile() != null)
-                                entry.put("user_name", mem.getUserProfile().getDisplayName());
-                        });
-                logs.add(entry);
-            }
-        }
-
-        // Recent tickets
-        tickets.stream().limit(30).forEach(t -> {
+        List<Map<String, Object>> logs = rawLogs.stream().map(al -> {
             Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("id", t.getId());
-            entry.put("type", "TICKET");
-            entry.put("method", t.getCreatedAt().equals(t.getUpdatedAt()) ? "POST" : "PUT");
-            entry.put("endpoint", "/api/tickets");
-            entry.put("status", 200);
-            entry.put("status_text", "OK");
-            entry.put("content_preview", t.getTitle());
-            entry.put("ticket_status", t.getStatus() != null ? t.getStatus().name() : "OPEN");
-            entry.put("ticket_priority", t.getPriority() != null ? t.getPriority().name() : "MEDIUM");
-            entry.put("user_profile_id", t.getCreatorProfileId());
-            entry.put("created_at", t.getCreatedAt());
-            // Find user
-            if (t.getCreatorProfileId() != null) {
-                members.stream().filter(mem -> mem.getUserProfileId().equals(t.getCreatorProfileId())).findFirst()
-                        .ifPresent(mem -> {
-                            if (mem.getUserProfile() != null)
-                                entry.put("user_name", mem.getUserProfile().getDisplayName());
-                        });
-            }
-            logs.add(entry);
-        });
+            entry.put("id", al.getId());
+            entry.put("type", al.getActionType());
+            entry.put("method", al.getMethod());
+            entry.put("endpoint", al.getEndpoint());
+            entry.put("status", al.getStatus());
+            entry.put("status_text", al.getStatus() != null && al.getStatus() < 400 ? "OK" : "ERRO");
+            entry.put("description", al.getDescription());
+            entry.put("user_profile_id", al.getUserProfileId());
+            entry.put("user_name", al.getUserName());
+            entry.put("ip_address", al.getIpAddress());
+            entry.put("duration_ms", al.getDurationMs());
+            entry.put("created_at", al.getCreatedAt());
+            return entry;
+        }).collect(Collectors.toList());
 
-        // Sort all logs by created_at desc
-        logs.sort((a, b) -> {
-            Instant ia = a.get("created_at") instanceof Instant ? (Instant) a.get("created_at") : Instant.MIN;
-            Instant ib = b.get("created_at") instanceof Instant ? (Instant) b.get("created_at") : Instant.MIN;
-            return ib.compareTo(ia);
-        });
+        long errorCount = activityLogRepository.countByCompanyIdAndStatusGreaterThanEqual(cId, 400);
+        stats.put("error_count", errorCount);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("stats", stats);

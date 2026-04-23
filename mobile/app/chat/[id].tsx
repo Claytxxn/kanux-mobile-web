@@ -7,6 +7,7 @@ import { colors, spacing } from '../../src/theme';
 import { useOfflineMessages } from '../../src/contexts/SyncContext';
 import { supabase, getChatTyping, setChatTyping, getChatMembersForChat, addMemberToChat, removeMemberFromChat, getCompanyMembers, ChatMember, Chat } from '../../src/lib/supabase';
 import { api } from '../../src/lib/api';
+import { ENV } from '../../src/lib/env';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
@@ -58,6 +59,7 @@ export default function ChatScreen() {
   // Áudio
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const preparingRecordingRef = useRef(false);
 
   // Membros do chat
   const [chatMembers, setChatMembers] = useState<ChatMember[]>([]);
@@ -210,15 +212,36 @@ export default function ChatScreen() {
 
   async function uploadToSupabase(uri: string, fileName: string, mimeType: string): Promise<string | null> {
     try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
       const filePath = `${id}/${Date.now()}_${fileName}`;
-      const { data, error } = await supabase.storage
-        .from('chat-media')
-        .upload(filePath, blob, { contentType: mimeType, upsert: false });
-      if (error) { console.error('Upload error:', error); return null; }
-      const { data: urlData } = supabase.storage.from('chat-media').getPublicUrl(filePath);
-      return urlData?.publicUrl ?? null;
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        console.error('Upload: sem sessão autenticada');
+        return null;
+      }
+
+      // FormData com padrão nativo do React Native para file URIs
+      const formData = new FormData();
+      formData.append('file', { uri, name: fileName, type: mimeType } as any);
+
+      const uploadRes = await fetch(`${ENV.SUPABASE_URL}/storage/v1/object/chat-media/${filePath}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'apikey': ENV.SUPABASE_ANON_KEY,
+          'x-upsert': 'false',
+        },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        console.error('Upload error:', uploadRes.status, errText);
+        return null;
+      }
+
+      return `${ENV.SUPABASE_URL}/storage/v1/object/public/chat-media/${filePath}`;
     } catch (e) {
       console.error('uploadToSupabase error:', e);
       return null;
@@ -264,6 +287,9 @@ export default function ChatScreen() {
   }
 
   async function handleStartRecording() {
+    if (isRecording || recording || preparingRecordingRef.current || sending) return;
+
+    preparingRecordingRef.current = true;
     try {
       const { granted } = await Audio.requestPermissionsAsync();
       if (!granted) { Alert.alert('Permissão necessária', 'Habilite o acesso ao microfone.'); return; }
@@ -273,7 +299,13 @@ export default function ChatScreen() {
       );
       setRecording(rec);
       setIsRecording(true);
-    } catch (e) { console.error('Erro ao iniciar gravação:', e); }
+    } catch (e) {
+      console.error('Erro ao iniciar gravação:', e);
+      setRecording(null);
+      setIsRecording(false);
+    } finally {
+      preparingRecordingRef.current = false;
+    }
   }
 
   async function handleStopRecording() {

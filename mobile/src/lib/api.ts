@@ -395,6 +395,11 @@ export const api = {
     return apiRequest('/api/admin/users');
   },
 
+  // Admin - dashboard e logs de atividade por empresa
+  async getAdminDashboard(companyId: string) {
+    return apiRequest(`/api/admin/dashboard?companyId=${encodeURIComponent(companyId)}`);
+  },
+
   // Admin - atualizar chat
   async updateChat(chatId: string, data: { name?: string; only_admins_send?: boolean }) {
     return apiRequest(`/api/chats/${chatId}`, {

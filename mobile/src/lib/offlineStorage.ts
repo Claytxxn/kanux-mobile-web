@@ -11,6 +11,7 @@ const STORAGE_KEYS = {
   PENDING_TICKETS: 'pending_tickets',
   LAST_SYNC: 'last_sync',
   USER_COMPANY: 'user_company',
+  USER_PROFILE: 'offline_user_profile',
 };
 
 // Messages storage
@@ -235,10 +236,30 @@ export async function clearAllOfflineData(): Promise<void> {
       STORAGE_KEYS.PENDING_TICKETS,
       STORAGE_KEYS.LAST_SYNC,
       STORAGE_KEYS.USER_COMPANY,
+      STORAGE_KEYS.USER_PROFILE,
     ];
     await AsyncStorage.multiRemove([...fixedKeys, ...dynamicKeys]);
   } catch (error) {
     console.error('Error clearing offline data:', error);
+  }
+}
+
+// User profile cache (para funcionar offline sem Supabase Auth)
+export async function saveProfileOffline(profile: any): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+  } catch (error) {
+    console.error('Error saving profile offline:', error);
+  }
+}
+
+export async function getOfflineProfile(): Promise<any | null> {
+  try {
+    const data = await AsyncStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+    return data ? JSON.parse(data) : null;
+  } catch (error) {
+    console.error('Error getting offline profile:', error);
+    return null;
   }
 }
 

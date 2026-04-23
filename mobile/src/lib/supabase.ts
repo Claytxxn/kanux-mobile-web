@@ -14,9 +14,7 @@ export const supabase = createClient(
       detectSessionInUrl: false,
     },
     global: {
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: {},
     },
   }
 );
