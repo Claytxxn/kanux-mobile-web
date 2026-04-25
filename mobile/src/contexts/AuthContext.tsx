@@ -2,8 +2,28 @@ import React, { createContext, useContext, useEffect, useState, useRef, ReactNod
 // @ts-ignore
 import NetInfo from '@react-native-community/netinfo';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase, getUserProfile, getUserCompanies, Profile } from '../lib/supabase';
-import { saveUserCompany, saveProfileOffline, getOfflineProfile } from '../lib/offlineStorage';
+import {
+  supabase,
+  getUserProfile,
+  getUserCompanies,
+  getCompanyChats,
+  getCompanyTickets,
+  getDepartments,
+  getChatMessages,
+  Profile,
+} from '../lib/supabase';
+import {
+  saveUserCompany,
+  saveProfileOffline,
+  getOfflineProfile,
+  saveCompaniesOffline,
+  saveChatsOffline,
+  saveTicketsOffline,
+  saveDepartmentsOffline,
+  saveMessagesOffline,
+  getUserCompany,
+  updateLastSync,
+} from '../lib/offlineStorage';
 import { setAuthToken, setTokenProvider, initApi } from '../lib/api';
 
 interface AuthContextType {
@@ -28,6 +48,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userRef = useRef<User | null>(null);
   const previousOnlineRef = useRef<boolean | null>(null);
   const hadOfflineSessionRef = useRef(false);
+
+  const preloadAfterLogin = async () => {
+    if (!isOnline) return;
+    try {
+      const companies = await getUserCompanies();
+      await saveCompaniesOffline(companies);
+
+      if (companies.length === 0) return;
+
+      const savedCompanyId = await getUserCompany();
+      const activeCompany = companies.find(c => c.id === savedCompanyId) ?? companies[0];
+      await saveUserCompany(activeCompany.id);
+
+      const [tickets, chats, departments] = await Promise.all([
+        getCompanyTickets(activeCompany.id),
+        getCompanyChats(activeCompany.id),
+        getDepartments(activeCompany.id),
+      ]);
+
+      await Promise.all([
+        saveTicketsOffline(tickets, activeCompany.id),
+        saveChatsOffline(activeCompany.id, chats),
+        saveDepartmentsOffline(activeCompany.id, departments),
+      ]);
+
+      // Pré-carrega mensagens dos chats da empresa ativa para abrir telas sem atraso.
+      await Promise.all(
+        chats.map(async (chat) => {
+          const messages = await getChatMessages(chat.id);
+          await saveMessagesOffline(chat.id, messages);
+        })
+      );
+
+      await updateLastSync();
+    } catch (error) {
+      console.error('Error preloading app data after login:', error);
+    }
+  };
 
   /** Load profile from backend; retries every 8s if backend returns nothing (e.g. 403 during deploy). */
   const loadProfile = async (sessionUser: User, attempt = 0) => {
@@ -57,6 +115,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn(`⚠️ Profile unavailable, retry in ${delay / 1000}s (attempt ${attempt + 1}/5)`);
       retryTimer.current = setTimeout(() => loadProfile(sessionUser, attempt + 1), delay);
     }
+  };
+
+  const bootstrapSession = async (sessionUser: User) => {
+    await loadProfile(sessionUser);
+    await preloadAfterLogin();
   };
 
   const refreshProfile = async () => {
@@ -118,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.access_token) setAuthToken(session.access_token);
 
       if (session?.user) {
-        loadProfile(session.user).finally(() => setLoading(false));
+        bootstrapSession(session.user).finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
@@ -132,9 +195,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthToken(session?.access_token ?? null);
 
       if (session?.user) {
-        loadProfile(session.user);
+        setLoading(true);
+        bootstrapSession(session.user).finally(() => setLoading(false));
       } else {
         setProfile(null);
+        setLoading(false);
       }
     });
 

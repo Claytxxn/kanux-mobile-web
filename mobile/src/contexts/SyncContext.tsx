@@ -11,6 +11,7 @@ import {
   saveDepartmentsOffline,
   saveTicketsOffline,
   updateLastSync,
+  getLastSync,
 } from '../lib/offlineStorage';
 import {
   getChatMessages,
@@ -49,7 +50,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   // Auto-sync when coming online
   useEffect(() => {
     if (!isOnline || !profile) return;
-    syncNow();
+    (async () => {
+      // Se acabou de fazer preload no login, evita repetir o sync pesado imediatamente.
+      const lastSync = await getLastSync();
+      const justSynced = lastSync && (Date.now() - lastSync.getTime()) < 60_000;
+      if (!justSynced) await syncNow();
+    })();
   }, [isOnline, profile?.id]);
 
   const warmupOfflineData = async () => {
