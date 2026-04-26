@@ -3,9 +3,12 @@ import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { MediaPreviewModal } from '../../src/components/MediaPreviewModal';
+import { TypingIndicator } from '../../src/components/TypingIndicator';
 import { colors, spacing } from '../../src/theme';
 import { useOfflineMessages } from '../../src/contexts/SyncContext';
-import { supabase, getChatTyping, setChatTyping, getChatMembersForChat, addMemberToChat, removeMemberFromChat, getCompanyMembers, ChatMember, Chat } from '../../src/lib/supabase';
+import { useWebSocket } from '../../src/contexts/WebSocketContext';
+import { supabase, getChatMembersForChat, addMemberToChat, removeMemberFromChat, getCompanyMembers, ChatMember, Chat } from '../../src/lib/supabase';
 import { api } from '../../src/lib/api';
 import { ENV } from '../../src/lib/env';
 import * as ImagePicker from 'expo-image-picker';
@@ -50,10 +53,10 @@ function buildListItems(msgs: any[], myProfileId?: string): any[] {
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, profile } = useAuth();
+  const { subscribeChatMessages, subscribeChatTyping, sendMessageWs, sendTypingWs, isConnected: wsConnected } = useWebSocket();
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [remoteTyping, setRemoteTyping] = useState<string[]>([]);
-  const typingTimer = useRef<any>(null);
   const listRef = useRef<FlatList>(null);
 
   // Áudio
@@ -67,6 +70,7 @@ export default function ChatScreen() {
   const [companyMembers, setCompanyMembers] = useState<any[]>([]);
   const [chatInfo, setChatInfo] = useState<Chat | null>(null);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [previewMedia, setPreviewMedia] = useState<{ uri: string; type: 'image' | 'document'; name?: string | null } | null>(null);
 
   const { messages, loading, sendMessage, refresh } = useOfflineMessages(id as string);
 
@@ -90,6 +94,16 @@ export default function ChatScreen() {
       });
     return () => { supabase.removeChannel(channel); };
   }, [id]);
+
+  // WebSocket STOMP: recebe mensagens em tempo real via backend Java
+  useEffect(() => {
+    if (!id) return;
+    const unsub = subscribeChatMessages(id, () => {
+      // Nova mensagem recebida via WebSocket — atualiza a lista
+      refreshRef.current();
+    });
+    return unsub;
+  }, [id, subscribeChatMessages]);
 
   // Polling de fallback: garante mensagens mesmo sem Supabase Realtime configurado
   useEffect(() => {
@@ -182,34 +196,59 @@ export default function ChatScreen() {
     return false;
   })();
 
-  // Status de digitação
+  // Status de digitação via WebSocket STOMP (fallback: polling Supabase se WS não conectado)
   useEffect(() => {
     if (!id) return;
-    let mounted = true;
-    const fetchTyping = async () => {
-      try {
-        const t = await getChatTyping(id as string);
-        if (!mounted) return;
-        const names = (t || [])
-          .filter((u: any) => u.user_profile_id !== profile?.id)
-          .map((u: any) => u.display_name || 'Alguém');
-        setRemoteTyping(names);
-      } catch (e) {
-        console.error('Erro ao buscar status de digitação:', e);
-      }
-    };
 
-    fetchTyping();
-    const interval = setInterval(fetchTyping, 1500);
-    return () => { mounted = false; clearInterval(interval); };
-  }, [id, user?.id]);
+    // Escuta typing via WebSocket
+    const unsub = subscribeChatTyping(id, (payload) => {
+      if (payload.user_profile_id === profile?.id) return; // ignora próprio typing
+      setRemoteTyping(prev => {
+        if (payload.typing) {
+          return prev.includes(payload.display_name) ? prev : [...prev, payload.display_name];
+        }
+        return prev.filter(n => n !== payload.display_name);
+      });
+    });
+
+    return unsub;
+  }, [id, profile?.id, subscribeChatTyping]);
+
+  // Limpar typing remoto quando sair da tela
+  useEffect(() => {
+    return () => { setRemoteTyping([]); };
+  }, [id]);
+
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleTypingChange(text: string) {
+    setNewMessage(text);
+    if (!id) return;
+
+    // Envia typing=true via WebSocket STOMP
+    sendTypingWs(id, true);
+
+    // Cancela timeout anterior e agenda typing=false após 2s de inatividade
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      sendTypingWs(id, false);
+    }, 2000);
+  }
 
   async function handleSend() {
     if (!newMessage.trim() || !id || sending) return;
 
     setSending(true);
+    // Cancelar typing ao enviar
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    sendTypingWs(id, false);
+
     try {
-      try { await setChatTyping(id as string, false); } catch {}
+      const sentViaWs = wsConnected && sendMessageWs(id, newMessage.trim());
+      if (sentViaWs) {
+        setNewMessage('');
+        return;
+      }
 
       const sentMessage = await sendMessage(newMessage.trim());
       if (sentMessage) {
@@ -246,7 +285,7 @@ export default function ChatScreen() {
           'apikey': ENV.SUPABASE_ANON_KEY,
           'x-upsert': 'false',
         },
-        body: formData,
+        body: formData as any,
       });
 
       if (!uploadRes.ok) {
@@ -282,7 +321,10 @@ export default function ChatScreen() {
       const mimeType = asset.mimeType || 'image/jpeg';
       const url = await uploadToSupabase(asset.uri, fileName, mimeType);
       if (!url) { Alert.alert('Erro', 'Falha ao enviar a foto.'); return; }
-      await sendMessage('', { messageType: 'image', mediaUrl: url, mediaName: fileName });
+      const sentViaWs = wsConnected && sendMessageWs(id, '', 'image', url, fileName);
+      if (!sentViaWs) {
+        await sendMessage('', { messageType: 'image', mediaUrl: url, mediaName: fileName });
+      }
     } finally { setSending(false); }
   }
 
@@ -296,7 +338,10 @@ export default function ChatScreen() {
       const mimeType = asset.mimeType || 'application/octet-stream';
       const url = await uploadToSupabase(asset.uri, asset.name, mimeType);
       if (!url) { Alert.alert('Erro', 'Falha ao enviar o arquivo.'); return; }
-      await sendMessage('', { messageType: 'document', mediaUrl: url, mediaName: asset.name });
+      const sentViaWs = wsConnected && sendMessageWs(id, '', 'document', url, asset.name);
+      if (!sentViaWs) {
+        await sendMessage('', { messageType: 'document', mediaUrl: url, mediaName: asset.name });
+      }
     } finally { setSending(false); }
   }
 
@@ -335,7 +380,10 @@ export default function ChatScreen() {
       const fileName = `audio_${Date.now()}.m4a`;
       const url = await uploadToSupabase(uri, fileName, 'audio/m4a');
       if (!url) { Alert.alert('Erro', 'Falha ao enviar o áudio.'); return; }
-      await sendMessage('', { messageType: 'audio', mediaUrl: url, mediaName: fileName });
+      const sentViaWs = wsConnected && sendMessageWs(id, '', 'audio', url, fileName);
+      if (!sentViaWs) {
+        await sendMessage('', { messageType: 'audio', mediaUrl: url, mediaName: fileName });
+      }
     } finally { setSending(false); }
   }
 
@@ -413,15 +461,23 @@ export default function ChatScreen() {
                 )}
                 {/* Renderização por tipo de mídia */}
                 {item.message_type === 'image' && item.media_url ? (
-                  <Image
-                    source={{ uri: item.media_url }}
-                    style={styles.mediaImage}
-                    resizeMode="cover"
-                  />
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => setPreviewMedia({ uri: item.media_url, type: 'image', name: item.media_name })}
+                  >
+                    <Image
+                      source={{ uri: item.media_url }}
+                      style={styles.mediaImage}
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
                 ) : item.message_type === 'audio' && item.media_url ? (
                   <AudioPlayer url={item.media_url} isMyMessage={isMyMessage} />
                 ) : item.message_type === 'document' && item.media_url ? (
-                  <TouchableOpacity style={styles.documentRow} onPress={() => Alert.alert('Arquivo', item.media_name || 'documento', [{ text: 'OK' }])}>
+                  <TouchableOpacity
+                    style={styles.documentRow}
+                    onPress={() => setPreviewMedia({ uri: item.media_url, type: 'document', name: item.media_name })}
+                  >
                     <Ionicons name="document-attach" size={22} color={isMyMessage ? '#fff' : colors.primary} />
                     <Text style={[styles.documentName, isMyMessage && styles.myMessageText]} numberOfLines={1}>
                       {item.media_name || 'Documento'}
@@ -450,9 +506,7 @@ export default function ChatScreen() {
         }
         ListHeaderComponent={
           remoteTyping.length > 0 ? (
-            <View style={styles.typingIndicator}>
-              <Text style={styles.typingText}>{`${remoteTyping.join(', ')} está digitando...`}</Text>
-            </View>
+            <TypingIndicator names={remoteTyping} />
           ) : null
         }
       />
@@ -480,13 +534,7 @@ export default function ChatScreen() {
               placeholder="Digite sua mensagem..."
               placeholderTextColor={colors.textMuted}
               value={newMessage}
-              onChangeText={(text) => {
-                setNewMessage(text);
-                if (!id) return;
-                try { setChatTyping(id as string, true); } catch (e) { }
-                if (typingTimer.current) clearTimeout(typingTimer.current);
-                typingTimer.current = setTimeout(() => { try { setChatTyping(id as string, false); } catch (e) {} }, 1500);
-              }}
+              onChangeText={handleTypingChange}
               multiline
               maxLength={1000}
             />
@@ -509,6 +557,14 @@ export default function ChatScreen() {
           </View>
         )}
       </View>
+
+      <MediaPreviewModal
+        visible={!!previewMedia}
+        uri={previewMedia?.uri ?? null}
+        type={previewMedia?.type ?? 'image'}
+        name={previewMedia?.name}
+        onClose={() => setPreviewMedia(null)}
+      />
 
       {/* Modal de Membros */}
       <Modal visible={showMembersModal} transparent animationType="slide">

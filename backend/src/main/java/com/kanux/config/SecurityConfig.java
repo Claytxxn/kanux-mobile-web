@@ -10,6 +10,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.kanux.security.JwtAuthFilter;
+import org.springframework.lang.NonNull;
 
 @Configuration
 @EnableWebSecurity
@@ -22,7 +23,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(@NonNull HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -31,7 +32,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/debug/**").permitAll()
-                    .requestMatchers("/error").permitAll()
+                        // WebSocket endpoints — autenticação feita via STOMP header
+                        .requestMatchers("/ws", "/ws/**", "/ws-native", "/ws-native/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
                 // Return 401 (not 403) for unauthenticated requests

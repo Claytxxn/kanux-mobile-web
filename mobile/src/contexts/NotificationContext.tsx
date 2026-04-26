@@ -31,6 +31,8 @@ export function useNotifications(activeChatId?: string) {
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
           shouldShowAlert: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
           shouldPlaySound: true,
           shouldSetBadge: true,
         }),
@@ -45,11 +47,19 @@ export function useNotifications(activeChatId?: string) {
     activeChatRef.current = activeChatId;
   }, [activeChatId]);
 
-  // Solicitar permissão de notificação
+  // Solicitar permissão de notificação e registrar push token no backend
   useEffect(() => {
     if (isExpoGo) return;
-    requestNotificationPermission();
-  }, []);
+    if (!profile?.id) return;
+    requestNotificationPermission().then((pushToken) => {
+      if (pushToken) {
+        // Salvar no backend de forma silenciosa
+        api.savePushToken(pushToken).catch(() => {
+          // Falha silenciosa — não critica o fluxo do app
+        });
+      }
+    });
+  }, [profile?.id]);
 
   // Inscrever no Supabase Realtime para TODAS as mensagens dos chats do usuário
   useEffect(() => {
@@ -111,7 +121,7 @@ export function useNotifications(activeChatId?: string) {
   }, [profile?.id]);
 }
 
-async function requestNotificationPermission() {
+async function requestNotificationPermission(): Promise<string | null> {
   const Notifications = await getNotificationsModule();
 
   if (Platform.OS === 'android') {
@@ -124,7 +134,18 @@ async function requestNotificationPermission() {
   }
 
   const { status: existing } = await Notifications.getPermissionsAsync();
+  let finalStatus = existing;
   if (existing !== 'granted') {
-    await Notifications.requestPermissionsAsync();
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') return null;
+
+  try {
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    return tokenData.data ?? null;
+  } catch {
+    return null;
   }
 }

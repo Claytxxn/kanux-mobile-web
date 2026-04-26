@@ -1,10 +1,12 @@
 
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Switch } from 'react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../src/theme';
 import { api } from '../src/lib/api';
+import { useWebSocket, WsErrorAlert } from '../src/contexts/WebSocketContext';
+import { useAuth } from '../src/contexts/AuthContext';
 
 interface Company { id: string; name: string; slug: string; created_at: string; }
 interface Ticket { id: string; title: string; status: string; priority: string; }
@@ -43,6 +45,8 @@ const PERM_LEVELS = [
 export default function AdminScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { profile } = useAuth();
+  const { subscribeAdminAlerts } = useWebSocket();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [currentCompanyId, setCurrentCompanyId] = useState<string>((params.companyId as string) || '');
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
@@ -53,6 +57,10 @@ export default function AdminScreen() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
+
+  // Alertas de erro em tempo real via WebSocket
+  const [errorAlert, setErrorAlert] = useState<WsErrorAlert | null>(null);
+  const alertTimerRef = useRef<any>(null);
 
   // ── Create User Modal ──────────────────────────────────────────────────────
   const [showCreateUser, setShowCreateUser] = useState(false);
@@ -105,6 +113,21 @@ export default function AdminScreen() {
   useEffect(() => { checkSuperAdmin(); }, []);
   useEffect(() => { if (isSuperAdminUser) loadCompanies(); }, [isSuperAdminUser]);
   useEffect(() => { if (currentCompanyId) loadCompanyData(currentCompanyId); }, [currentCompanyId]);
+
+  // Subscrever alertas de erro via WebSocket quando a empresa estiver selecionada
+  useEffect(() => {
+    if (!currentCompanyId) return;
+    const unsub = subscribeAdminAlerts(currentCompanyId, (alert) => {
+      setErrorAlert(alert);
+      // Limpar alerta automaticamente após 8 segundos
+      if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
+      alertTimerRef.current = setTimeout(() => setErrorAlert(null), 8000);
+    });
+    return () => {
+      unsub();
+      if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
+    };
+  }, [currentCompanyId, subscribeAdminAlerts]);
 
   async function checkSuperAdmin() {
     try {
@@ -440,6 +463,21 @@ export default function AdminScreen() {
           ))}
         </ScrollView>
       </View>
+
+        {errorAlert && (
+          <View style={styles.errorAlertBanner}>
+            <Ionicons name="warning" size={18} color="#fff" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.errorAlertTitle}>Erro HTTP {errorAlert.status}</Text>
+              <Text style={styles.errorAlertText} numberOfLines={2}>
+                {errorAlert.method} {errorAlert.endpoint} - {errorAlert.description || 'Falha detectada'}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setErrorAlert(null)}>
+              <Ionicons name="close" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
 
       {/* Tabs */}
       <View style={styles.tabs}>
@@ -1054,6 +1092,15 @@ const styles = StyleSheet.create({
   backButton: { padding: 4 },
   headerTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
   companySelectorBar: { paddingVertical: spacing.sm, backgroundColor: colors.backgroundLight },
+  errorAlertBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: colors.error ?? '#EF4444',
+    marginHorizontal: spacing.md, marginTop: spacing.sm,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  errorAlertTitle: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  errorAlertText: { color: '#fff', fontSize: 12, opacity: 0.92, marginTop: 1 },
   companyChip: {
     paddingHorizontal: 14, paddingVertical: 6, borderRadius: borderRadius.md,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,

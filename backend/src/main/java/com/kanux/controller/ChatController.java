@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -43,16 +44,19 @@ public class ChatController {
     private final ChatMemberRepository chatMemberRepository;
     private final MessageRepository messageRepository;
     private final UserProfileRepository userProfileRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // chatId -> (userId -> timestamp da última digitação em ms)
     private final Map<UUID, Map<UUID, Long>> typingMap = new ConcurrentHashMap<>();
 
     public ChatController(ChatRepository chatRepository, ChatMemberRepository chatMemberRepository,
-                          MessageRepository messageRepository, UserProfileRepository userProfileRepository) {
+                          MessageRepository messageRepository, UserProfileRepository userProfileRepository,
+                          SimpMessagingTemplate messagingTemplate) {
         this.chatRepository = chatRepository;
         this.chatMemberRepository = chatMemberRepository;
         this.messageRepository = messageRepository;
         this.userProfileRepository = userProfileRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @SuppressWarnings("null")
@@ -132,6 +136,7 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
+    @SuppressWarnings("null")
     @PostMapping("/{chatId}/messages")
     public ResponseEntity<ApiResponse<Map<String, Object>>> sendMessage(
             @AuthenticationPrincipal UserProfile p, @PathVariable String chatId,
@@ -154,7 +159,9 @@ public class ChatController {
         if (req.getMediaName() != null) message.setMediaName(req.getMediaName());
         message.setAttachments("[]");
         Message saved = messageRepository.save(message);
-        return ResponseEntity.ok(ApiResponse.ok(toMap(saved)));
+        Map<String, Object> payload = toMap(saved);
+        messagingTemplate.convertAndSend("/topic/chat/" + chatId, payload);
+        return ResponseEntity.ok(ApiResponse.ok(payload));
     }
 
     @PostMapping("/{chatId}/typing")

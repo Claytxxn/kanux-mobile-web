@@ -104,16 +104,31 @@ const apiClient = {
     });
   },
 
-  async sendMessage(chatId: string, content: string, userProfileId?: string) {
+  async sendMessage(
+    chatId: string,
+    content: string,
+    userProfileId?: string,
+    options?: { messageType?: string; mediaUrl?: string; mediaName?: string }
+  ) {
     return apiRequest(`/api/chats/${chatId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ content, user_profile_id: userProfileId }),
+      body: JSON.stringify({
+        content,
+        user_profile_id: userProfileId,
+        message_type: options?.messageType ?? 'text',
+        media_url: options?.mediaUrl,
+        media_name: options?.mediaName,
+      }),
     });
   },
 
   // Tickets
-  async getTickets(companyId: string) {
-    return apiRequest(`/api/tickets?companyId=${companyId}`);
+  async getTickets(companyId?: string, ticketId?: string) {
+    const params = new URLSearchParams();
+    if (companyId) params.append('companyId', companyId);
+    if (ticketId) params.append('ticketId', ticketId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiRequest(`/api/tickets${query}`);
   },
 
   async createTicket(data: any) {

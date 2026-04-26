@@ -10,8 +10,9 @@ import org.springframework.stereotype.Service;
 import java.util.UUID;
 
 /**
- * Serviço assíncrono responsável por persistir os logs de atividade.
- * Usar um componente separado evita problemas de proxy com @Async na mesma classe.
+ * Serviço assíncrono responsável por:
+ * 1. Persistir logs de atividade na tabela activity_logs.
+ * 2. Notificar admins quando status >= 400 via push notification e WebSocket.
  */
 @Service
 public class ActivityLogService {
@@ -19,9 +20,12 @@ public class ActivityLogService {
     private static final Logger log = LoggerFactory.getLogger(ActivityLogService.class);
 
     private final ActivityLogRepository activityLogRepository;
+    private final PushNotificationService pushNotificationService;
 
-    public ActivityLogService(ActivityLogRepository activityLogRepository) {
+    public ActivityLogService(ActivityLogRepository activityLogRepository,
+                               PushNotificationService pushNotificationService) {
         this.activityLogRepository = activityLogRepository;
+        this.pushNotificationService = pushNotificationService;
     }
 
     @Async
@@ -42,8 +46,15 @@ public class ActivityLogService {
             entry.setIpAddress(ipAddress);
             entry.setDurationMs(durationMs);
             activityLogRepository.save(entry);
+
+            // Notifica admins em tempo real quando ocorre erro HTTP >= 400
+            if (status >= 400 && companyId != null) {
+                pushNotificationService.notifyAdminsOnError(
+                        companyId, userName, method, endpoint, status, description);
+            }
         } catch (Exception e) {
             log.warn("Falha ao salvar activity log: {}", e.getMessage());
         }
     }
 }
+

@@ -9,6 +9,7 @@ import com.kanux.entity.UserProfile;
 import com.kanux.repository.TicketCommentRepository;
 import com.kanux.repository.TicketRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
@@ -24,10 +25,15 @@ public class TicketController {
 
     private final TicketRepository ticketRepository;
     private final TicketCommentRepository commentRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    public TicketController(TicketRepository ticketRepository, TicketCommentRepository commentRepository) {
+    public TicketController(
+            TicketRepository ticketRepository,
+            TicketCommentRepository commentRepository,
+            SimpMessagingTemplate messagingTemplate) {
         this.ticketRepository = ticketRepository;
         this.commentRepository = commentRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @GetMapping
@@ -104,26 +110,13 @@ public class TicketController {
         if (p == null) return ResponseEntity.status(401).body(ApiResponse.fail("Unauthorized"));
         List<Map<String, Object>> result = commentRepository
                 .findByTicketIdWithProfileOrderByCreatedAtAsc(UUID.fromString(ticketId))
-                .stream().map(c -> {
-                    Map<String, Object> map = new LinkedHashMap<>();
-                    map.put("id", c.getId());
-                    map.put("ticket_id", c.getTicketId());
-                    map.put("user_profile_id", c.getUserProfileId());
-                    map.put("content", c.getContent());
-                    map.put("created_at", c.getCreatedAt());
-                    if (c.getUserProfile() != null) {
-                        Map<String, Object> up = new LinkedHashMap<>();
-                        up.put("id", c.getUserProfile().getId());
-                        up.put("display_name", c.getUserProfile().getDisplayName());
-                        up.put("email", c.getUserProfile().getEmail());
-                        up.put("avatar_url", c.getUserProfile().getAvatarUrl());
-                        map.put("user_profile", up);
-                    }
-                    return map;
-                }).collect(Collectors.toList());
+                .stream()
+                .map(c -> toCommentMap(c, c.getUserProfile()))
+                .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
+    @SuppressWarnings("null")
     @PostMapping("/{ticketId}/comments")
     public ResponseEntity<ApiResponse<Map<String, Object>>> addComment(
             @AuthenticationPrincipal UserProfile p, @PathVariable String ticketId,
@@ -136,18 +129,27 @@ public class TicketController {
         comment.setUserProfileId(p.getId());
         comment.setContent(content);
         TicketComment saved = commentRepository.save(comment);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("id", saved.getId());
-        result.put("ticket_id", saved.getTicketId());
-        result.put("user_profile_id", saved.getUserProfileId());
-        result.put("content", saved.getContent());
-        result.put("created_at", saved.getCreatedAt());
-        Map<String, Object> up = new LinkedHashMap<>();
-        up.put("id", p.getId());
-        up.put("display_name", p.getDisplayName());
-        up.put("email", p.getEmail());
-        up.put("avatar_url", p.getAvatarUrl());
-        result.put("user_profile", up);
+        Map<String, Object> result = toCommentMap(saved, p);
+        messagingTemplate.convertAndSend("/topic/ticket/" + saved.getTicketId() + "/comments", result);
         return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    @SuppressWarnings("null")
+    private Map<String, Object> toCommentMap(TicketComment comment, UserProfile userProfile) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", comment.getId());
+        map.put("ticket_id", comment.getTicketId());
+        map.put("user_profile_id", comment.getUserProfileId());
+        map.put("content", comment.getContent());
+        map.put("created_at", comment.getCreatedAt());
+        if (userProfile != null) {
+            Map<String, Object> up = new LinkedHashMap<>();
+            up.put("id", userProfile.getId());
+            up.put("display_name", userProfile.getDisplayName());
+            up.put("email", userProfile.getEmail());
+            up.put("avatar_url", userProfile.getAvatarUrl());
+            map.put("user_profile", up);
+        }
+        return map;
     }
 }

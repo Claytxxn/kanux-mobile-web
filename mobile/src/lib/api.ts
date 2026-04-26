@@ -25,7 +25,7 @@ const detectApiUrl = async (): Promise<string> => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ slug: 'test' }),
-          signal: controller.signal,
+          signal: controller.signal as any,
         });
 
         clearTimeout(timeoutId);
@@ -92,7 +92,7 @@ export const getAuthToken = (): string | null => authToken;
  */
 export const setTokenProvider = (fn: () => Promise<string | null>) => { tokenProvider = fn; };
 
-const getHeaders = (token: string | null, requiresAuth = true): HeadersInit => {
+const getHeaders = (token: string | null, requiresAuth = true): Record<string, string> => {
   if (requiresAuth && !token) {
     console.warn('⚠️ API call requires auth but no token available!');
   }
@@ -197,6 +197,12 @@ export const api = {
   async getProfile() { return apiRequest('/api/profile'); },
   async updateProfile(data: { display_name?: string; phone?: string; position?: string; department?: string; avatar_url?: string }) {
     return apiRequest('/api/profile', { method: 'PATCH', body: JSON.stringify(data) });
+  },
+  async savePushToken(pushToken: string) {
+    return apiRequest('/api/profile/push-token', {
+      method: 'POST',
+      body: JSON.stringify({ push_token: pushToken }),
+    });
   },
 
   // Companies

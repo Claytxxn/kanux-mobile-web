@@ -38,6 +38,10 @@ public class UserProfile {
     @Column(name = "is_super_admin", nullable = false)
     private boolean superAdmin = false;
 
+    @JsonProperty("push_token")
+    @Column(name = "push_token")
+    private String pushToken;
+
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 

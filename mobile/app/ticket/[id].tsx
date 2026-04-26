@@ -1,7 +1,9 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, Image, ActivityIndicator } from 'react-native';
 import { useEffect, useState, useRef } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { MediaPreviewModal } from '../../src/components/MediaPreviewModal';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useWebSocket } from '../../src/contexts/WebSocketContext';
 import { Ticket, TicketComment, getTicketComments, addTicketComment, updateTicketStatus, getUserProfile, supabase } from '../../src/lib/supabase';
 import { api } from '../../src/lib/api';
 import { ENV } from '../../src/lib/env';
@@ -20,6 +22,7 @@ function getImageUrlFromComment(content?: string): string | null {
 export default function TicketScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, profile } = useAuth();
+  const { subscribeTicketComments } = useWebSocket();
   const router = useRouter();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [comments, setComments] = useState<any[]>([]);
@@ -27,7 +30,19 @@ export default function TicketScreen() {
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  function appendComment(comment: any) {
+    setComments(prev => {
+      if (prev.some(item => item.id === comment.id)) {
+        return prev;
+      }
+      return [...prev, comment].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    });
+  }
 
   async function loadComments() {
     if (!id) return;
@@ -64,26 +79,17 @@ export default function TicketScreen() {
     loadData();
   }, [id]);
 
-  // Realtime: escuta novos comentários no ticket
   useEffect(() => {
     if (!id) return;
-    const channel = supabase
-      .channel(`ticket-comments-${id}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'ticket_comments', filter: `ticket_id=eq.${id}` },
-        () => { loadCommentsRef.current(); }
-      )
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR') console.warn('[Realtime] canal de comentários com erro, usando polling');
-      });
-    return () => { supabase.removeChannel(channel); };
-  }, [id]);
+    return subscribeTicketComments(id, (comment) => {
+      appendComment(comment);
+    });
+  }, [id, subscribeTicketComments]);
 
-  // Polling de fallback: atualiza comentários a cada 5 segundos
+  // Polling de fallback: atualiza comentários periodicamente para recuperar mensagens perdidas.
   useEffect(() => {
     if (!id) return;
-    const interval = setInterval(() => { loadCommentsRef.current(); }, 5000);
+    const interval = setInterval(() => { loadCommentsRef.current(); }, 15000);
     return () => clearInterval(interval);
   }, [id]);
 
@@ -100,7 +106,7 @@ export default function TicketScreen() {
     try {
       const comment = await addTicketComment(id, newComment.trim());
       if (comment) {
-        setComments(prev => [...prev, comment]);
+        appendComment(comment);
         setNewComment('');
       }
     } catch (error) {
@@ -131,7 +137,7 @@ export default function TicketScreen() {
           'apikey': ENV.SUPABASE_ANON_KEY,
           'x-upsert': 'false',
         },
-        body: formData,
+        body: formData as any,
       });
 
       if (!uploadRes.ok) {
@@ -177,7 +183,7 @@ export default function TicketScreen() {
 
       const comment = await addTicketComment(id, `${TICKET_IMAGE_PREFIX}${url}`);
       if (comment) {
-        setComments(prev => [...prev, comment]);
+        appendComment(comment);
       }
     } catch (error) {
       console.error('Erro ao adicionar foto no ticket:', error);
@@ -335,7 +341,9 @@ export default function TicketScreen() {
                       <Text style={styles.authorName}>{getAuthorName(comment)}</Text>
                     )}
                     {imageUrl ? (
-                      <Image source={{ uri: imageUrl }} style={styles.commentImage} resizeMode="cover" />
+                      <TouchableOpacity activeOpacity={0.9} onPress={() => setPreviewImageUrl(imageUrl)}>
+                        <Image source={{ uri: imageUrl }} style={styles.commentImage} resizeMode="cover" />
+                      </TouchableOpacity>
                     ) : (
                       <Text style={styles.messageText}>{comment.content}</Text>
                     )}
@@ -376,6 +384,14 @@ export default function TicketScreen() {
           </View>
         </>
       )}
+
+      <MediaPreviewModal
+        visible={!!previewImageUrl}
+        uri={previewImageUrl}
+        type="image"
+        name="Foto do ticket"
+        onClose={() => setPreviewImageUrl(null)}
+      />
     </KeyboardAvoidingView>
   );
 }

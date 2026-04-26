@@ -546,59 +546,9 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
-  ticketTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  ticketDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
-    lineHeight: 20,
-  },
-  ticketFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: borderRadius.full,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  ticketDate: {
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  empty: {
-    alignItems: 'center',
-    padding: spacing.xxl,
-  },
   emptyIcon: {
     fontSize: 48,
     marginBottom: spacing.md,
-  },
-  emptyText: {
-    color: colors.textSecondary,
-    fontSize: 16,
-  },
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing.lg,
-    width: 60,
-    height: 60,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.floating,
   },
   fabText: {
     fontSize: 32,

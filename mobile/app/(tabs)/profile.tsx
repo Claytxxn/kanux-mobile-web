@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { api } from '../../src/lib/api';
+import { ENV } from '../../src/lib/env';
 import { supabase } from '../../src/lib/supabase';
 import { colors, spacing } from '../../src/theme';
 
@@ -50,7 +51,7 @@ export default function ProfileScreen() {
       // Upload using fetch to Supabase Storage REST API
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
-      const supabaseUrl = supabase.supabaseUrl || (supabase as any).url || '';
+      const supabaseUrl = ENV.SUPABASE_URL;
 
       const uploadRes = await fetch(`${supabaseUrl}/storage/v1/object/avatars/${fileName}`, {
         method: 'POST',

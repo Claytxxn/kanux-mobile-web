@@ -16,4 +16,13 @@ public interface CompanyMemberRepository extends JpaRepository<CompanyMember, UU
 
     @Query("SELECT m FROM CompanyMember m JOIN FETCH m.userProfile WHERE m.companyId = :companyId")
     List<CompanyMember> findByCompanyIdWithProfile(@Param("companyId") UUID companyId);
+
+    // Busca admins e super_admins da empresa com push token já registrado.
+    @Query("""
+            SELECT m FROM CompanyMember m JOIN FETCH m.userProfile up
+            WHERE m.companyId = :companyId
+              AND m.role IN ('ADMIN', 'SUPER_ADMIN')
+              AND up.pushToken IS NOT NULL
+            """)
+    List<CompanyMember> findAdminsWithPushTokenByCompanyId(@Param("companyId") UUID companyId);
 }
