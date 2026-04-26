@@ -115,7 +115,7 @@ public class ChatWebSocketController {
             messagingTemplate.convertAndSend("/topic/chat/" + chatId, (Object) broadcast);
             log.debug("[WS] Mensagem broadcast → /topic/chat/{} por {}", chatId, senderName);
 
-        } catch (Exception e) {
+        } catch (org.springframework.messaging.MessagingException | org.springframework.messaging.MessageHandlingException e) {
             log.error("[WS] Erro ao processar mensagem no chat {}: {}", chatId, e.getMessage());
         }
     }
@@ -149,7 +149,7 @@ public class ChatWebSocketController {
                     "typing", isTyping
             );
             messagingTemplate.convertAndSend("/topic/chat/" + chatId + "/typing", (Object) typingPayload);
-        } catch (Exception e) {
+        } catch (org.springframework.messaging.MessagingException e) {
             log.warn("[WS] Erro no evento de digitação: {}", e.getMessage());
         }
     }
@@ -163,7 +163,7 @@ public class ChatWebSocketController {
         try {
             messagingTemplate.convertAndSend("/topic/admin/" + companyId + "/alerts", (Object) alertPayload);
             log.debug("[WS] Alerta de erro broadcast → /topic/admin/{}/alerts", companyId);
-        } catch (Exception e) {
+        } catch (org.springframework.messaging.MessagingException e) {
             log.warn("[WS] Falha ao broadcast alerta de erro: {}", e.getMessage());
         }
     }
