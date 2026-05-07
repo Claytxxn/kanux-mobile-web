@@ -81,23 +81,6 @@ export default function ChatScreen() {
   const refreshRef = useRef(refresh);
   useEffect(() => { refreshRef.current = refresh; }, [refresh]);
 
-  // Realtime: assina novas mensagens via Supabase para atualização ao vivo
-  useEffect(() => {
-    if (!id) return;
-    const channel = supabase
-      .channel(`chat-messages-${id}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${id}` },
-        () => { refreshRef.current(); }
-      )
-      .subscribe((status) => {
-        // Se o Realtime não estiver disponível, o polling abaixo garante as mensagens
-        if (status === 'CHANNEL_ERROR') console.warn('[Realtime] canal de mensagens com erro, usando polling');
-      });
-    return () => { supabase.removeChannel(channel); };
-  }, [id]);
-
   // WebSocket STOMP: recebe mensagens em tempo real via backend Java
   useEffect(() => {
     if (!id) return;
@@ -108,12 +91,12 @@ export default function ChatScreen() {
     return unsub;
   }, [id, subscribeChatMessages]);
 
-  // Polling de fallback: garante mensagens mesmo sem Supabase Realtime configurado
+  // Fallback REST: quando WS cair, faz refresh periódico para não perder mensagens.
   useEffect(() => {
-    if (!id) return;
-    const interval = setInterval(() => { refreshRef.current(); }, 5000);
+    if (!id || wsConnected) return;
+    const interval = setInterval(() => { refreshRef.current(); }, 8000);
     return () => clearInterval(interval);
-  }, [id]);
+  }, [id, wsConnected]);
 
   // Carregar info do chat e membros
   useEffect(() => {

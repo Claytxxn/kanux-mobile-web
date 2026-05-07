@@ -210,6 +210,9 @@ export const api = {
   async getCompanies() { return apiRequest('/api/companies'); },
   async getAllCompanies() { return apiRequest('/api/admin/companies'); },
   async getCompanyMembers(companyId: string) { return apiRequest(`/api/companies/${companyId}/members`); },
+  async getSyncBootstrap(messagesPerChat = 50) {
+    return apiRequest(`/api/sync/bootstrap?messagesPerChat=${messagesPerChat}`);
+  },
 
   async createCompany(name: string, slug: string) {
     return apiRequest('/api/companies', {

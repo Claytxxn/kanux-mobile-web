@@ -21,6 +21,7 @@ import {
   getUserCompanies,
   sendMessage as sendApiMessage,
 } from '../lib/supabase';
+import { api } from '../lib/api';
 
 interface SyncContextType {
   isSyncing: boolean;
@@ -60,6 +61,49 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const warmupOfflineData = async () => {
     try {
+      // Primeira opção: endpoint de bootstrap no backend para sincronizar tudo de uma vez.
+      try {
+        const bootstrapResult: any = await api.getSyncBootstrap(50);
+        const bundles = bootstrapResult?.data?.companies || [];
+
+        if (Array.isArray(bundles) && bundles.length > 0) {
+          const companies = bundles
+            .map((b: any) => b?.company)
+            .filter(Boolean);
+
+          await saveCompaniesOffline(companies);
+
+          for (const bundle of bundles) {
+            const company = bundle?.company;
+            if (!company?.id) continue;
+
+            const chats = bundle?.chats || [];
+            const tickets = bundle?.tickets || [];
+            const departments = bundle?.departments || [];
+            const messagesByChat = bundle?.messages_by_chat || {};
+
+            await Promise.all([
+              saveTicketsOffline(tickets, company.id),
+              saveChatsOffline(company.id, chats),
+              saveDepartmentsOffline(company.id, departments),
+            ]);
+
+            await Promise.all(
+              chats.map(async (chat: any) => {
+                const messages = messagesByChat?.[chat.id] || [];
+                await saveMessagesOffline(chat.id, messages);
+              })
+            );
+          }
+
+          await updateLastSync();
+          return;
+        }
+      } catch {
+        // Fallback abaixo mantém compatibilidade com backend antigo.
+      }
+
+      // Fallback: sincronização tradicional por múltiplos endpoints.
       const companies = await getUserCompanies();
       await saveCompaniesOffline(companies);
 

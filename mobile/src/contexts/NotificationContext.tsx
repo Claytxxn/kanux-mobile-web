@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 import Constants from 'expo-constants';
 import { Platform, AppState } from 'react-native';
-import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { api } from '../lib/api';
+import { useWebSocket } from './WebSocketContext';
 
 const isExpoGo = Constants.appOwnership === 'expo';
 
@@ -19,8 +19,10 @@ async function getNotificationsModule() {
  */
 export function useNotifications(activeChatId?: string) {
   const { profile } = useAuth();
+  const { subscribeChatMessages } = useWebSocket();
   const activeChatRef = useRef<string | undefined>(activeChatId);
   const lastMessageIds = useRef<Set<string>>(new Set());
+  const chatNamesRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     if (isExpoGo) return;
@@ -61,70 +63,94 @@ export function useNotifications(activeChatId?: string) {
     });
   }, [profile?.id]);
 
-  // Inscrever no Supabase Realtime para TODAS as mensagens dos chats do usuário
+  // Inscrever via WebSocket em todos os chats do usuário para notificações locais
   useEffect(() => {
     if (!profile?.id) return;
 
-    const channel = supabase
-      .channel('global-new-messages')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        async (payload) => {
-          const msg = payload.new as any;
-          if (!msg) return;
+    let cancelled = false;
+    const unsubs: Array<() => void> = [];
 
-          // Ignorar próprias mensagens
-          if (msg.user_profile_id === profile.id) return;
+    const scheduleLocalNotification = async (msg: any) => {
+      if (!msg) return;
 
-          // Ignorar mensagem se já processada
-          if (lastMessageIds.current.has(msg.id)) return;
-          lastMessageIds.current.add(msg.id);
-          if (lastMessageIds.current.size > 2000) {
-            lastMessageIds.current = new Set(Array.from(lastMessageIds.current).slice(-1000));
+      // Ignorar próprias mensagens
+      if (msg.user_profile_id === profile.id) return;
+
+      // Ignorar mensagem se já processada
+      if (lastMessageIds.current.has(msg.id)) return;
+      lastMessageIds.current.add(msg.id);
+      if (lastMessageIds.current.size > 2000) {
+        lastMessageIds.current = new Set(Array.from(lastMessageIds.current).slice(-1000));
+      }
+
+      if (isExpoGo) return;
+
+      // Ignorar se o usuário está no chat que recebeu a mensagem E o app está ativo
+      const appIsActive = AppState.currentState === 'active';
+      if (appIsActive && activeChatRef.current === msg.chat_id) return;
+
+      const chatName = chatNamesRef.current.get(msg.chat_id) || 'Chat';
+      const senderName = msg.display_name || 'Alguém';
+
+      // Montar corpo da notificação
+      let body = msg.content || '';
+      if (msg.message_type === 'image') body = '📷 Foto';
+      else if (msg.message_type === 'audio') body = '🎵 Áudio';
+      else if (msg.message_type === 'document') body = `📄 ${msg.media_name || 'Documento'}`;
+      else if (body.length > 60) body = body.substring(0, 60) + '...';
+
+      const Notifications = await getNotificationsModule();
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `${senderName} em ${chatName}`,
+          body,
+          data: { chatId: msg.chat_id },
+          sound: true,
+        },
+        trigger: null, // imediato
+      });
+    };
+
+    const subscribeAllChats = async () => {
+      try {
+        const companiesResult = await api.getUserCompanies();
+        const companies = companiesResult?.data || [];
+        if (cancelled) return;
+
+        const chatMap = new Map<string, string>();
+        for (const company of companies) {
+          const chatsResult = await api.getChats(company.id);
+          const chats = chatsResult?.data || [];
+          for (const chat of chats) {
+            if (chat?.id) {
+              chatMap.set(chat.id, chat.name || 'Chat');
+            }
           }
-
-          if (isExpoGo) return;
-
-          // Ignorar se o usuário está no chat que recebeu a mensagem E o app está ativo
-          const appIsActive = AppState.currentState === 'active';
-          if (appIsActive && activeChatRef.current === msg.chat_id) return;
-
-          // Buscar nome do chat e do remetente para a notificação
-          let chatName = 'Chat';
-          let senderName = msg.display_name || 'Alguém';
-
-          try {
-            const chatResult = await api.getChats(undefined, msg.chat_id);
-            if (!chatResult?.data) return;
-            if (chatResult.data.name) chatName = chatResult.data.name;
-          } catch {
-            return;
-          }
-
-          // Montar corpo da notificação
-          let body = msg.content || '';
-          if (msg.message_type === 'image') body = '📷 Foto';
-          else if (msg.message_type === 'audio') body = '🎵 Áudio';
-          else if (msg.message_type === 'document') body = `📄 ${msg.media_name || 'Documento'}`;
-          else if (body.length > 60) body = body.substring(0, 60) + '...';
-
-          const Notifications = await getNotificationsModule();
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: `${senderName} em ${chatName}`,
-              body,
-              data: { chatId: msg.chat_id },
-              sound: true,
-            },
-            trigger: null, // imediato
-          });
         }
-      )
-      .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [profile?.id]);
+        if (cancelled) return;
+        chatNamesRef.current = chatMap;
+
+        for (const chatId of chatMap.keys()) {
+          const unsub = subscribeChatMessages(chatId, (msg) => {
+            scheduleLocalNotification(msg).catch(() => {});
+          });
+          unsubs.push(unsub);
+        }
+      } catch {
+        // Sem fallback adicional: push notifications continuam funcionando via backend.
+      }
+    };
+
+    subscribeAllChats().catch(() => {});
+
+    return () => {
+      cancelled = true;
+      unsubs.forEach((fn) => {
+        try { fn(); } catch {}
+      });
+    };
+  }, [profile?.id, subscribeChatMessages]);
 }
 
 async function requestNotificationPermission(): Promise<string | null> {

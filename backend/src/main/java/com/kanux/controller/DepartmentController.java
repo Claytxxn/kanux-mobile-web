@@ -56,7 +56,7 @@ public class DepartmentController {
 
     @SuppressWarnings("null")
     @DeleteMapping
-    public ResponseEntity<ApiResponse<Void>> deleteDepartment(
+    public ResponseEntity<ApiResponse<Void>> deleteDepartment( 
             @AuthenticationPrincipal UserProfile p, @RequestParam String id) {
         if (p == null) return ResponseEntity.status(401).body(ApiResponse.fail("Unauthorized"));
         departmentRepository.deleteById(UUID.fromString(id));
