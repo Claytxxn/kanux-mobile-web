@@ -123,11 +123,21 @@ async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}, 
   const headers = { ...getHeaders(currentToken, requiresAuth), ...options.headers };
   
   console.log(`📡 API ${options.method || 'GET'} ${endpoint} | auth=${!!currentToken} | token=${currentToken ? currentToken.substring(0, 20) + '...' : 'null'}`);
+
+  // Timeout de 12s — evita travar durante cold-start do Render
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
   
-  const response = await fetch(`${base}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${base}${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal as any,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   // Read body as text first to handle empty or non-JSON responses safely
   const text = await response.text();

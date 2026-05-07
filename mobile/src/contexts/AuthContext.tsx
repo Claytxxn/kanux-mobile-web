@@ -87,34 +87,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  /** Load profile from backend; retries every 8s if backend returns nothing (e.g. 403 during deploy). */
-  const loadProfile = async (sessionUser: User, attempt = 0) => {
-    const profileData = await getUserProfile(sessionUser.id);
-    if (profileData) {
-      setProfile(profileData);
-      // Salva perfil offline para uso quando sem internet
-      saveProfileOffline(profileData).catch(() => {});
-      try {
-        const companies = await getUserCompanies();
-        if (companies.length > 0) await saveUserCompany(companies[0].id);
-      } catch { /* non-fatal */ }
-    } else if (attempt === 0) {
-      // Tenta carregar do cache offline enquanto backend não responde
-      const cached = await getOfflineProfile();
-      if (cached) {
-        console.log('💾 Usando perfil do cache offline');
-        setProfile(cached);
+  /** Refresh profile from network in background — never blocks navigation. */
+  const refreshProfileFromNetwork = async (sessionUser: User, attempt = 0) => {
+    try {
+      const profileData = await getUserProfile(sessionUser.id);
+      if (profileData) {
+        setProfile(profileData);
+        saveProfileOffline(profileData).catch(() => {});
+        try {
+          const companies = await getUserCompanies();
+          if (companies.length > 0) await saveUserCompany(companies[0].id);
+        } catch { /* non-fatal */ }
+        return;
       }
-      // Continua tentando em background
-      const delay = 8000;
+    } catch { /* network error or timeout */ }
+
+    // Retry with backoff up to 5 attempts
+    if (attempt < 5) {
+      const delay = Math.min((attempt + 1) * 10000, 30000);
       console.warn(`⚠️ Profile unavailable, retry in ${delay / 1000}s (attempt ${attempt + 1}/5)`);
-      retryTimer.current = setTimeout(() => loadProfile(sessionUser, attempt + 1), delay);
-    } else if (attempt < 5) {
-      // Backend might still be deploying — retry with backoff
-      const delay = Math.min((attempt + 1) * 8000, 30000);
-      console.warn(`⚠️ Profile unavailable, retry in ${delay / 1000}s (attempt ${attempt + 1}/5)`);
-      retryTimer.current = setTimeout(() => loadProfile(sessionUser, attempt + 1), delay);
+      retryTimer.current = setTimeout(() => refreshProfileFromNetwork(sessionUser, attempt + 1), delay);
     }
+  };
+
+  /** Load profile — cache first (fast), then network in background. */
+  const loadProfile = async (sessionUser: User, attempt = 0) => {
+    // 1) Serve do cache offline imediatamente
+    const cached = await getOfflineProfile();
+    if (cached) {
+      console.log('💾 Perfil do cache — entrar imediato');
+      setProfile(cached);
+    }
+    // 2) Busca da rede em background (atualiza sem bloquear)
+    refreshProfileFromNetwork(sessionUser, attempt).catch(() => {});
   };
 
   const bootstrapSession = async (sessionUser: User) => {
