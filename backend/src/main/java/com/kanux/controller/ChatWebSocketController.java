@@ -1,6 +1,7 @@
 package com.kanux.controller;
 
 import com.kanux.entity.Message;
+import com.kanux.config.PushNotificationService;
 import com.kanux.repository.ChatMemberRepository;
 import com.kanux.repository.MessageRepository;
 import com.kanux.repository.UserProfileRepository;
@@ -36,15 +37,18 @@ public class ChatWebSocketController {
     private final MessageRepository messageRepository;
     private final UserProfileRepository userProfileRepository;
     private final ChatMemberRepository chatMemberRepository;
+    private final PushNotificationService pushNotificationService;
 
     public ChatWebSocketController(SimpMessagingTemplate messagingTemplate,
                                     MessageRepository messageRepository,
                                     UserProfileRepository userProfileRepository,
-                                    ChatMemberRepository chatMemberRepository) {
+                                    ChatMemberRepository chatMemberRepository,
+                                    PushNotificationService pushNotificationService) {
         this.messagingTemplate = messagingTemplate;
         this.messageRepository = messageRepository;
         this.userProfileRepository = userProfileRepository;
         this.chatMemberRepository = chatMemberRepository;
+        this.pushNotificationService = pushNotificationService;
     }
 
     /**
@@ -150,6 +154,11 @@ public class ChatWebSocketController {
             // Broadcast para todos no tópico do chat
             messagingTemplate.convertAndSend("/topic/chat/" + chatId, (Object) broadcast);
             log.debug("[WS] Mensagem broadcast → /topic/chat/{} por {}", chatId, senderName);
+
+            // Push notification para membros offline (não bloqueia)
+            pushNotificationService.notifyNewMessage(
+                    chatUuid, senderProfileId, senderName, null,
+                    saved.getContent(), saved.getMessageType());
 
         } catch (org.springframework.messaging.MessagingException e) {
             log.error("[WS] Erro ao processar mensagem no chat {}: {}", chatId, e.getMessage());

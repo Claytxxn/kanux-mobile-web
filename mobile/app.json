@@ -23,7 +23,8 @@
         "backgroundColor": "#09090B"
       },
       "package": "com.kanux.mobile",
-      "versionCode": 1005
+      "versionCode": 1005,
+      "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": [
   "expo-router"

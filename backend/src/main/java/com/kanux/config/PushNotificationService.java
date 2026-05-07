@@ -3,7 +3,7 @@ package com.kanux.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kanux.controller.ChatWebSocketController;
 import com.kanux.entity.CompanyMember;
-import com.kanux.repository.CompanyMemberRepository;
+import com.kanux.repository.ChatMemberRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -38,12 +38,15 @@ public class PushNotificationService {
     private static final long NOTIFY_COOLDOWN_MS = 30_000; // 30 segundos entre notificações por empresa
 
     private final CompanyMemberRepository companyMemberRepository;
+    private final ChatMemberRepository chatMemberRepository;
     private final ChatWebSocketController chatWebSocketController;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public PushNotificationService(CompanyMemberRepository companyMemberRepository,
+                                    ChatMemberRepository chatMemberRepository,
                                     @Lazy ChatWebSocketController chatWebSocketController) {
         this.companyMemberRepository = companyMemberRepository;
+        this.chatMemberRepository = chatMemberRepository;
         this.chatWebSocketController = chatWebSocketController;
     }
 
@@ -145,4 +148,57 @@ public class PushNotificationService {
         if (s == null) return "";
         return s.length() > maxLen ? s.substring(0, maxLen) + "…" : s;
     }
-}
+    /**
+     * Envia push notification para os membros do chat quando uma nova mensagem chega.
+     * N\u00e3o notifica o pr\u00f3prio remetente. Executa de forma ass\u00edncrona.
+     */
+    @Async
+    public void notifyNewMessage(UUID chatId, UUID senderId, String senderName,
+                                  String chatName, String content, String messageType) {
+        try {
+            List<com.kanux.entity.ChatMember> members =
+                    chatMemberRepository.findMembersWithPushTokenExcludingSender(chatId, senderId);
+            if (members.isEmpty()) return;
+
+            String body;
+            if ("image".equals(messageType))         body = "\uD83D\uDCF7 Foto";
+            else if ("audio".equals(messageType))    body = "\uD83C\uDFB5 \u00c1udio";
+            else if ("document".equals(messageType)) body = "\uD83D\uDCC4 Documento";
+            else body = content != null && content.length() > 60 ? content.substring(0, 60) + "\u2026" : (content != null ? content : "");
+
+            String title = senderName + (chatName != null ? " em " + chatName : "");
+
+            List<Map<String, Object>> messages = new ArrayList<>();
+            for (com.kanux.entity.ChatMember member : members) {
+                String pushToken = member.getUserProfile().getPushToken();
+                if (pushToken == null || pushToken.isBlank()) continue;
+                Map<String, Object> msg = new LinkedHashMap<>();
+                msg.put("to", pushToken);
+                msg.put("title", title);
+                msg.put("body", body);
+                msg.put("data", Map.of("chatId", chatId.toString()));
+                msg.put("sound", "default");
+                msg.put("priority", "high");
+                messages.add(msg);
+            }
+            if (messages.isEmpty()) return;
+
+            String jsonBody = objectMapper.writeValueAsString(messages);
+            HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(EXPO_PUSH_URL))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .timeout(Duration.ofSeconds(15))
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                log.debug("[Push] {} notifica\u00e7\u00f5es de mensagem enviadas para chat {}", messages.size(), chatId);
+            } else {
+                log.warn("[Push] Expo API (mensagem) retornou {}: {}", response.statusCode(), truncate(response.body(), 200));
+            }
+        } catch (Exception e) {
+            log.warn("[Push] Falha ao enviar push de mensagem: {}", e.getMessage());
+        }
+    }}

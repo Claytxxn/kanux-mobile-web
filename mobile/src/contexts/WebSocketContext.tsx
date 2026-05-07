@@ -58,6 +58,8 @@ type AlertListener = (alert: WsErrorAlert) => void;
 type TicketCommentListener = (comment: WsTicketComment) => void;
 export type TypingPayload = { user_profile_id: string; display_name: string; typing: boolean };
 type TypingListener = (payload: TypingPayload) => void;
+export type PresencePayload = { user_profile_id: string; online: boolean };
+type PresenceListener = (payload: PresencePayload) => void;
 
 interface WebSocketContextType {
   isConnected: boolean;
@@ -69,6 +71,8 @@ interface WebSocketContextType {
   subscribeTicketComments: (ticketId: string, listener: TicketCommentListener) => () => void;
   /** Inscreve um listener para status de digitação de um chat */
   subscribeChatTyping: (chatId: string, listener: TypingListener) => () => void;
+  /** Inscreve um listener para presença (online/offline) de um chat */
+  subscribePresence: (chatId: string, listener: PresenceListener) => () => void;
   /** Envia mensagem via WebSocket */
   sendMessageWs: (
     chatId: string,
@@ -100,6 +104,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const ticketListenersRef = useRef<Map<string, Set<TicketCommentListener>>>(new Map());
   // Map chatId → Set<TypingListener>
   const typingListenersRef = useRef<Map<string, Set<TypingListener>>>(new Map());
+  // Map chatId → Set<PresenceListener>
+  const presenceListenersRef = useRef<Map<string, Set<PresenceListener>>>(new Map());
   // Subscriptions STOMP ativas: topic → StompSubscription
   const stompSubsRef = useRef<Map<string, StompSubscription>>(new Map());
 
@@ -168,6 +174,14 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         });
         stompSubsRef.current.set(`typing:${chatId}`, tsub);
       }
+
+      // Re-inscrever presença do mesmo chat
+      if (presenceListenersRef.current.has(chatId)) {
+        const psub = client.subscribe(`/topic/chat/${chatId}/presence`, (msg) => {
+          handlePresence(chatId, msg);
+        });
+        stompSubsRef.current.set(`presence:${chatId}`, psub);
+      }
     }
 
     // Re-inscrever tópicos de alertas admin ativos
@@ -195,6 +209,18 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       console.warn('[WS] Payload inválido no typing', chatId, e);
+    }
+  }
+
+  function handlePresence(chatId: string, frame: IMessage) {
+    try {
+      const payload: PresencePayload = JSON.parse(frame.body);
+      const listeners = presenceListenersRef.current.get(chatId);
+      if (listeners) {
+        listeners.forEach((fn) => fn(payload));
+      }
+    } catch (e) {
+      console.warn('[WS] Payload inválido no presence', chatId, e);
     }
   }
 
@@ -404,6 +430,40 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const subscribePresence = useCallback((chatId: string, listener: PresenceListener): (() => void) => {
+    if (!presenceListenersRef.current.has(chatId)) {
+      presenceListenersRef.current.set(chatId, new Set());
+    }
+    presenceListenersRef.current.get(chatId)!.add(listener);
+
+    const key = `presence:${chatId}`;
+    if (clientRef.current?.connected && !stompSubsRef.current.has(key)) {
+      try {
+        const sub = clientRef.current.subscribe(`/topic/chat/${chatId}/presence`, (msg) => {
+          handlePresence(chatId, msg);
+        });
+        stompSubsRef.current.set(key, sub);
+      } catch (e) {
+        console.warn('[WS] Erro ao inscrever presence', chatId, e);
+      }
+    }
+
+    return () => {
+      const set = presenceListenersRef.current.get(chatId);
+      if (set) {
+        set.delete(listener);
+        if (set.size === 0) {
+          presenceListenersRef.current.delete(chatId);
+          const sub = stompSubsRef.current.get(key);
+          if (sub) {
+            try { sub.unsubscribe(); } catch {}
+            stompSubsRef.current.delete(key);
+          }
+        }
+      }
+    };
+  }, []);
+
   const sendTypingWs = useCallback((chatId: string, isTyping: boolean): void => {
     if (!clientRef.current?.connected) return;
     try {
@@ -450,6 +510,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       subscribeAdminAlerts,
       subscribeTicketComments,
       subscribeChatTyping,
+      subscribePresence,
       sendMessageWs,
       sendTypingWs,
     }}>

@@ -31,6 +31,7 @@ import com.kanux.entity.Chat;
 import com.kanux.entity.ChatMember;
 import com.kanux.entity.Message;
 import com.kanux.entity.UserProfile;
+import com.kanux.config.PushNotificationService;
 import com.kanux.repository.ChatMemberRepository;
 import com.kanux.repository.ChatRepository;
 import com.kanux.repository.MessageRepository;
@@ -45,18 +46,21 @@ public class ChatController {
     private final MessageRepository messageRepository;
     private final UserProfileRepository userProfileRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final PushNotificationService pushNotificationService;
 
     // chatId -> (userId -> timestamp da última digitação em ms)
     private final Map<UUID, Map<UUID, Long>> typingMap = new ConcurrentHashMap<>();
 
     public ChatController(ChatRepository chatRepository, ChatMemberRepository chatMemberRepository,
                           MessageRepository messageRepository, UserProfileRepository userProfileRepository,
-                          SimpMessagingTemplate messagingTemplate) {
+                          SimpMessagingTemplate messagingTemplate,
+                          PushNotificationService pushNotificationService) {
         this.chatRepository = chatRepository;
         this.chatMemberRepository = chatMemberRepository;
         this.messageRepository = messageRepository;
         this.userProfileRepository = userProfileRepository;
         this.messagingTemplate = messagingTemplate;
+        this.pushNotificationService = pushNotificationService;
     }
 
     @SuppressWarnings("null")
@@ -171,6 +175,13 @@ public class ChatController {
         Message saved = messageRepository.save(message);
         Map<String, Object> payload = toMap(saved);
         messagingTemplate.convertAndSend("/topic/chat/" + chatId, payload);
+
+        // Push notification para membros offline
+        String senderName = p.getDisplayName() != null ? p.getDisplayName() : p.getEmail();
+        pushNotificationService.notifyNewMessage(
+                UUID.fromString(chatId), senderId, senderName, null,
+                saved.getContent(), saved.getMessageType());
+
         return ResponseEntity.ok(ApiResponse.ok(payload));
     }
 

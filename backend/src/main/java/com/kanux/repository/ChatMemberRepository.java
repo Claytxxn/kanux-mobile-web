@@ -17,4 +17,11 @@ public interface ChatMemberRepository extends JpaRepository<ChatMember, UUID> {
     Optional<ChatMember> findByChatIdAndUserProfileId(UUID chatId, UUID userProfileId);
     boolean existsByChatIdAndUserProfileId(UUID chatId, UUID userProfileId);
     void deleteByChatIdAndUserProfileId(UUID chatId, UUID userProfileId);
+
+    /** Retorna membros do chat que possuem push_token, excluindo o remetente. */
+    @Query("SELECT cm FROM ChatMember cm JOIN FETCH cm.userProfile up " +
+           "WHERE cm.chatId = :chatId AND cm.userProfileId <> :senderId " +
+           "AND up.pushToken IS NOT NULL AND up.pushToken <> ''")
+    List<ChatMember> findMembersWithPushTokenExcludingSender(
+            @Param("chatId") UUID chatId, @Param("senderId") UUID senderId);
 }

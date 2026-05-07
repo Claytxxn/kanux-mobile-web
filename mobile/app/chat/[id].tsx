@@ -56,10 +56,11 @@ export default function ChatScreen() {
   const { user, profile } = useAuth();
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === 'android' ? Math.max(insets.bottom, 8) : insets.bottom;
-  const { subscribeChatMessages, subscribeChatTyping, sendMessageWs, sendTypingWs, isConnected: wsConnected } = useWebSocket();
+  const { subscribeChatMessages, subscribeChatTyping, subscribePresence, sendMessageWs, sendTypingWs, isConnected: wsConnected } = useWebSocket();
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [remoteTyping, setRemoteTyping] = useState<string[]>([]);
+  const [onlineMembers, setOnlineMembers] = useState<Set<string>>(new Set());
   const listRef = useRef<FlatList>(null);
 
   // Áudio
@@ -204,6 +205,23 @@ export default function ChatScreen() {
   useEffect(() => {
     return () => { setRemoteTyping([]); };
   }, [id]);
+
+  // Presença online via WebSocket
+  useEffect(() => {
+    if (!id) return;
+    const unsub = subscribePresence(id, (payload) => {
+      setOnlineMembers(prev => {
+        const next = new Set(prev);
+        if (payload.online) {
+          next.add(payload.user_profile_id);
+        } else {
+          next.delete(payload.user_profile_id);
+        }
+        return next;
+      });
+    });
+    return unsub;
+  }, [id, subscribePresence]);
 
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -393,20 +411,27 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      {/* Barra de informações do chat */}
+        {/* Barra de informações do chat */}
       <View style={styles.chatHeader}>
         <View style={styles.chatHeaderInfo}>
           <Text style={styles.chatHeaderName}>{chatInfo?.name || 'Chat'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={[styles.onlineDot, remoteTyping.length > 0 ? styles.onlineDotActive : styles.onlineDotInactive]} />
+            <View style={[styles.onlineDot, onlineMembers.size > 0 ? styles.onlineDotActive : styles.onlineDotInactive]} />
             <Text style={styles.chatHeaderSub}>
               {chatInfo?.is_private ? '🔒 Privado' : '# Público'} • {chatMembers.length} membros
-              {remoteTyping.length > 0 ? ' • Online' : ''}
+              {onlineMembers.size > 0 ? ` • ${onlineMembers.size} online` : ''}
             </Text>
           </View>
+          {remoteTyping.length > 0 && (
+            <Text style={styles.typingHeaderText}>
+              {remoteTyping.length === 1
+                ? `${remoteTyping[0]} está digitando...`
+                : `${remoteTyping[0]} e mais ${remoteTyping.length - 1} estão digitando...`}
+            </Text>
+          )}
         </View>
         <TouchableOpacity style={styles.membersButton} onPress={openMembersModal}>
           <Ionicons name="people" size={22} color={colors.primary} />
@@ -703,6 +728,12 @@ const styles = StyleSheet.create({
   chatHeaderSub: {
     fontSize: 12,
     color: colors.textMuted,
+    marginTop: 2,
+  },
+  typingHeaderText: {
+    fontSize: 11,
+    color: colors.primary,
+    fontStyle: 'italic',
     marginTop: 2,
   },
   membersButton: {
