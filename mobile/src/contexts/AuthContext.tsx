@@ -119,7 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const bootstrapSession = async (sessionUser: User) => {
     await loadProfile(sessionUser);
-    await preloadAfterLogin();
+    preloadAfterLogin().catch((error) => {
+      console.error('Error scheduling app preload after login:', error);
+    });
   };
 
   const refreshProfile = async () => {
