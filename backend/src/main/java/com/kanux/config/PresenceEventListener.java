@@ -76,9 +76,8 @@ public class PresenceEventListener {
                     "online", true
             );
             for (UUID chatId : chatIds) {
-                @SuppressWarnings("null")
-                Object p = (Object) payload;
-                messagingTemplate.convertAndSend("/topic/chat/" + chatId + "/presence", p);
+                messagingTemplate.convertAndSend("/topic/chat/" + chatId + "/presence",
+                        java.util.Objects.requireNonNull((Object) payload));
             }
             log.debug("[Presence] {} ficou online em {} chats", userId, chatIds.size());
         } catch (RuntimeException e) {
@@ -103,9 +102,8 @@ public class PresenceEventListener {
                 "online", false
         );
         for (UUID chatId : chatIds) {
-            @SuppressWarnings("null")
-            Object p = (Object) payload;
-            messagingTemplate.convertAndSend("/topic/chat/" + chatId + "/presence", p);
+            messagingTemplate.convertAndSend("/topic/chat/" + chatId + "/presence",
+                    java.util.Objects.requireNonNull((Object) payload));
         }
         log.debug("[Presence] {} ficou offline", userId);
     }

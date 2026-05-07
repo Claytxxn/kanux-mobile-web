@@ -161,11 +161,14 @@ public class PushNotificationService {
                     chatMemberRepository.findMembersWithPushTokenExcludingSender(chatId, senderId);
             if (members.isEmpty()) return;
 
-            String body;
-            if ("image".equals(messageType))         body = "\uD83D\uDCF7 Foto";
-            else if ("audio".equals(messageType))    body = "\uD83C\uDFB5 \u00c1udio";
-            else if ("document".equals(messageType)) body = "\uD83D\uDCC4 Documento";
-            else body = content != null && content.length() > 60 ? content.substring(0, 60) + "\u2026" : (content != null ? content : "");
+            String body = switch (messageType != null ? messageType : "") {
+                case "image"    -> "\uD83D\uDCF7 Foto";
+                case "audio"    -> "\uD83C\uDFB5 \u00c1udio";
+                case "document" -> "\uD83D\uDCC4 Documento";
+                default         -> content != null && content.length() > 60
+                        ? content.substring(0, 60) + "\u2026"
+                        : (content != null ? content : "");
+            };
 
             String title = senderName + (chatName != null ? " em " + chatName : "");
 
@@ -199,7 +202,7 @@ public class PushNotificationService {
             } else {
                 log.warn("[Push] Expo API (mensagem) retornou {}: {}", response.statusCode(), truncate(response.body(), 200));
             }
-        } catch (Exception e) {
+        } catch (java.io.IOException | InterruptedException e) {
             log.warn("[Push] Falha ao enviar push de mensagem: {}", e.getMessage());
         }
     }}
