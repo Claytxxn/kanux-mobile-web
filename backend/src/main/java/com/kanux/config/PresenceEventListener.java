@@ -11,6 +11,7 @@ import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.security.Principal;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -106,5 +107,18 @@ public class PresenceEventListener {
                     java.util.Objects.requireNonNull((Object) payload));
         }
         log.debug("[Presence] {} ficou offline", userId);
+    }
+
+    /**
+     * Retorna os IDs dos usuários atualmente online que são membros do chat informado.
+     */
+    public Set<UUID> getOnlineUsersForChat(UUID chatId) {
+        Set<UUID> online = new HashSet<>();
+        for (Map.Entry<UUID, Set<UUID>> entry : userChats.entrySet()) {
+            if (entry.getValue().contains(chatId)) {
+                online.add(entry.getKey());
+            }
+        }
+        return online;
     }
 }

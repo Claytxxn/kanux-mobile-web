@@ -131,7 +131,9 @@ export function useNotifications(activeChatId?: string) {
           body,
           data: { chatId: msg.chat_id },
           sound: true,
-        },
+          categoryIdentifier: 'MESSAGE_REPLY',
+          ...(Platform.OS === 'android' ? { android: { channelId: 'messages' } } : {}),
+        } as any,
         trigger: null, // imediato
       });
     };

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, Image, ActivityIndicator, StatusBar } from 'react-native';
 import { useEffect, useState, useRef } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MediaPreviewModal } from '../../src/components/MediaPreviewModal';
@@ -240,8 +240,8 @@ export default function TicketScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : (StatusBar.currentHeight ?? 0)}
     >
       {ticket && (
         <>

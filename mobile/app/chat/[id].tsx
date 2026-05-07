@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Modal, FlatList, Alert, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Modal, FlatList, Alert, Image, ActivityIndicator, StatusBar } from 'react-native';
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -209,6 +209,13 @@ export default function ChatScreen() {
   // Presença online via WebSocket
   useEffect(() => {
     if (!id) return;
+
+    // Busca quem já está online no momento (snapshot inicial)
+    api.getOnlineMembers(id).then((ids) => {
+      setOnlineMembers(new Set(ids));
+    }).catch(() => {});
+
+    // Inscreve para receber mudanças futuras de presença
     const unsub = subscribePresence(id, (payload) => {
       setOnlineMembers(prev => {
         const next = new Set(prev);
@@ -411,8 +418,8 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : (StatusBar.currentHeight ?? 0)}
     >
         {/* Barra de informações do chat */}
       <View style={styles.chatHeader}>

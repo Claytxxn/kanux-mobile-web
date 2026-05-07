@@ -31,6 +31,7 @@ import com.kanux.entity.Chat;
 import com.kanux.entity.ChatMember;
 import com.kanux.entity.Message;
 import com.kanux.entity.UserProfile;
+import com.kanux.config.PresenceEventListener;
 import com.kanux.config.PushNotificationService;
 import com.kanux.repository.ChatMemberRepository;
 import com.kanux.repository.ChatRepository;
@@ -47,6 +48,7 @@ public class ChatController {
     private final UserProfileRepository userProfileRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final PushNotificationService pushNotificationService;
+    private final PresenceEventListener presenceEventListener;
 
     // chatId -> (userId -> timestamp da última digitação em ms)
     private final Map<UUID, Map<UUID, Long>> typingMap = new ConcurrentHashMap<>();
@@ -54,13 +56,15 @@ public class ChatController {
     public ChatController(ChatRepository chatRepository, ChatMemberRepository chatMemberRepository,
                           MessageRepository messageRepository, UserProfileRepository userProfileRepository,
                           SimpMessagingTemplate messagingTemplate,
-                          PushNotificationService pushNotificationService) {
+                          PushNotificationService pushNotificationService,
+                          PresenceEventListener presenceEventListener) {
         this.chatRepository = chatRepository;
         this.chatMemberRepository = chatMemberRepository;
         this.messageRepository = messageRepository;
         this.userProfileRepository = userProfileRepository;
         this.messagingTemplate = messagingTemplate;
         this.pushNotificationService = pushNotificationService;
+        this.presenceEventListener = presenceEventListener;
     }
 
     @SuppressWarnings("null")
@@ -300,6 +304,22 @@ public class ChatController {
         chatMemberRepository.deleteByChatIdAndUserProfileId(
                 UUID.fromString(chatId), UUID.fromString(userProfileId));
         return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
+    /** Retorna IDs dos usuários atualmente online (via WebSocket) no chat informado. */
+    @GetMapping("/{chatId}/online-members")
+    public ResponseEntity<ApiResponse<List<String>>> getOnlineMembers(
+            @AuthenticationPrincipal UserProfile p, @PathVariable String chatId) {
+        if (p == null) return ResponseEntity.status(401).body(ApiResponse.fail("Unauthorized"));
+        UUID chatUuid;
+        try {
+            chatUuid = UUID.fromString(chatId);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("Invalid chatId"));
+        }
+        List<String> ids = presenceEventListener.getOnlineUsersForChat(chatUuid)
+                .stream().map(UUID::toString).toList();
+        return ResponseEntity.ok(ApiResponse.ok(ids));
     }
 
     @SuppressWarnings("null")

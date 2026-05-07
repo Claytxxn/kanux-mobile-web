@@ -215,6 +215,11 @@ export const api = {
     });
   },
 
+  async getOnlineMembers(chatId: string): Promise<string[]> {
+    const result = await apiRequest(`/api/chats/${chatId}/online-members`);
+    return (result?.data as string[]) ?? [];
+  },
+
   // Companies
   async getUserCompanies() { return apiRequest('/api/companies'); },
   async getCompanies() { return apiRequest('/api/companies'); },
