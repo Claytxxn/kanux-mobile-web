@@ -76,10 +76,12 @@ public class PresenceEventListener {
                     "online", true
             );
             for (UUID chatId : chatIds) {
-                messagingTemplate.convertAndSend("/topic/chat/" + chatId + "/presence", (Object) payload);
+                @SuppressWarnings("null")
+                Object p = (Object) payload;
+                messagingTemplate.convertAndSend("/topic/chat/" + chatId + "/presence", p);
             }
             log.debug("[Presence] {} ficou online em {} chats", userId, chatIds.size());
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.warn("[Presence] Erro ao processar conexão: {}", e.getMessage());
         }
     }
@@ -101,7 +103,9 @@ public class PresenceEventListener {
                 "online", false
         );
         for (UUID chatId : chatIds) {
-            messagingTemplate.convertAndSend("/topic/chat/" + chatId + "/presence", (Object) payload);
+            @SuppressWarnings("null")
+            Object p = (Object) payload;
+            messagingTemplate.convertAndSend("/topic/chat/" + chatId + "/presence", p);
         }
         log.debug("[Presence] {} ficou offline", userId);
     }

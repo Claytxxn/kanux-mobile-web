@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kanux.controller.ChatWebSocketController;
 import com.kanux.entity.CompanyMember;
 import com.kanux.repository.ChatMemberRepository;
+import com.kanux.repository.CompanyMemberRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
