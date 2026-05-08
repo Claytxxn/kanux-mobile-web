@@ -264,14 +264,28 @@ export default function ChatScreen() {
 
     try {
       const clientMessageId = makeClientMessageId();
+      const content = newMessage.trim();
       const sentViaWs = wsConnected && sendMessageWs(id, newMessage.trim(), 'text', undefined, undefined, clientMessageId);
       if (sentViaWs) {
         setNewMessage('');
         return;
       }
-      Alert.alert('WebSocket desconectado', 'Conecte-se novamente para enviar mensagens em tempo real.');
+
+      // Fallback REST para não bloquear envio durante restart/redeploy do backend.
+      if (!profile?.id) {
+        Alert.alert('Erro', 'Perfil indisponível para enviar mensagem.');
+        return;
+      }
+
+      await api.sendMessage(id, content, profile.id, {
+        messageType: 'text',
+        clientMessageId,
+      });
+      setNewMessage('');
+      refreshRef.current();
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
+      Alert.alert('Erro', 'Falha ao enviar mensagem. Tente novamente.');
     } finally {
       setSending(false);
     }
@@ -344,7 +358,17 @@ export default function ChatScreen() {
       const clientMessageId = makeClientMessageId();
       const sentViaWs = wsConnected && sendMessageWs(id, '', 'image', url, fileName, clientMessageId);
       if (!sentViaWs) {
-        Alert.alert('WebSocket desconectado', 'Conecte-se novamente para enviar mensagens em tempo real.');
+        if (!profile?.id) {
+          Alert.alert('Erro', 'Perfil indisponível para enviar foto.');
+          return;
+        }
+        await api.sendMessage(id, '', profile.id, {
+          messageType: 'image',
+          mediaUrl: url,
+          mediaName: fileName,
+          clientMessageId,
+        });
+        refreshRef.current();
       }
     } finally { setSending(false); }
   }
@@ -366,7 +390,17 @@ export default function ChatScreen() {
       const clientMessageId = makeClientMessageId();
       const sentViaWs = wsConnected && sendMessageWs(id, '', 'document', url, asset.name, clientMessageId);
       if (!sentViaWs) {
-        Alert.alert('WebSocket desconectado', 'Conecte-se novamente para enviar mensagens em tempo real.');
+        if (!profile?.id) {
+          Alert.alert('Erro', 'Perfil indisponível para enviar arquivo.');
+          return;
+        }
+        await api.sendMessage(id, '', profile.id, {
+          messageType: 'document',
+          mediaUrl: url,
+          mediaName: asset.name,
+          clientMessageId,
+        });
+        refreshRef.current();
       }
     } finally { setSending(false); }
   }
@@ -413,7 +447,17 @@ export default function ChatScreen() {
       const clientMessageId = makeClientMessageId();
       const sentViaWs = wsConnected && sendMessageWs(id, '', 'audio', url, fileName, clientMessageId);
       if (!sentViaWs) {
-        Alert.alert('WebSocket desconectado', 'Conecte-se novamente para enviar mensagens em tempo real.');
+        if (!profile?.id) {
+          Alert.alert('Erro', 'Perfil indisponível para enviar áudio.');
+          return;
+        }
+        await api.sendMessage(id, '', profile.id, {
+          messageType: 'audio',
+          mediaUrl: url,
+          mediaName: fileName,
+          clientMessageId,
+        });
+        refreshRef.current();
       }
     } finally { setSending(false); }
   }
