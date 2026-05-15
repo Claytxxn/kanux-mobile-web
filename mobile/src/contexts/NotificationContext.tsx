@@ -22,8 +22,16 @@ const unreadActiveChatMap = new Map<string, number>();
 const unreadSubscriptions = new Map<string, () => void>();
 const unreadMessageIds = new Set<string>();
 const unreadMessageOrder: string[] = [];
+const MAX_UNREAD_MESSAGE_IDS = 2000;
+const TRIM_UNREAD_MESSAGE_IDS_TO = 1000;
 let unreadProfileId: string | null = null;
 let unreadSyncPromise: Promise<void> | null = null;
+
+type UnreadWsMessage = {
+  id?: string;
+  chat_id?: string;
+  user_profile_id?: string;
+};
 
 function serializeUnreadMap(): Record<string, number> {
   return Object.fromEntries(unreadMap.entries());
@@ -41,7 +49,9 @@ function notifyUnreadListeners() {
 
 function resetUnreadSubscriptions() {
   unreadSubscriptions.forEach((unsub) => {
-    try { unsub(); } catch {}
+    try { unsub(); } catch (error) {
+      console.warn('[Notifications] Falha ao encerrar subscription de unread', error);
+    }
   });
   unreadSubscriptions.clear();
   unreadMessageIds.clear();
@@ -60,7 +70,7 @@ function incrementUnread(chatId: string) {
 
 async function ensureUnreadSubscriptions(
   profileId: string,
-  subscribeChatMessages: (chatId: string, listener: (msg: any) => void) => () => void,
+  subscribeChatMessages: (chatId: string, listener: (msg: UnreadWsMessage) => void) => () => void,
 ) {
   if (!profileId) return;
 
@@ -93,8 +103,8 @@ async function ensureUnreadSubscriptions(
             if (unreadMessageIds.has(msg.id)) return;
             unreadMessageIds.add(msg.id);
             unreadMessageOrder.push(msg.id);
-            if (unreadMessageIds.size > 2000) {
-              while (unreadMessageOrder.length > 1000) {
+            if (unreadMessageIds.size > MAX_UNREAD_MESSAGE_IDS) {
+              while (unreadMessageOrder.length > TRIM_UNREAD_MESSAGE_IDS_TO) {
                 const oldest = unreadMessageOrder.shift();
                 if (oldest) unreadMessageIds.delete(oldest);
               }
@@ -170,9 +180,9 @@ export function useUnreadCounts(activeChatId?: string) {
 
   const markChatAsRead = useCallback((chatId: string) => {
     if (!chatId) return;
+    if ((unreadMap.get(chatId) || 0) === 0) return;
     unreadMap.set(chatId, 0);
     notifyUnreadListeners();
-    setCounts((prev) => ({ ...prev, [chatId]: 0 }));
   }, []);
 
   const totalUnread = Object.values(counts).reduce((sum, n) => sum + n, 0);
