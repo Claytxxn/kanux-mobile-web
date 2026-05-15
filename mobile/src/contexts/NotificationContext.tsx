@@ -12,12 +12,16 @@ async function getNotificationsModule() {
   return Notifications;
 }
 
-// Estado global de não lidas — compartilhado entre telas
+/**
+ * Estado global de mensagens não lidas compartilhado entre múltiplas telas/hooks.
+ * É resetado quando o perfil autenticado muda e sincronizado por listeners internos.
+ */
 const unreadMap = new Map<string, number>();
 const unreadListeners = new Set<() => void>();
 const unreadActiveChatMap = new Map<string, number>();
 const unreadSubscriptions = new Map<string, () => void>();
 const unreadMessageIds = new Set<string>();
+const unreadMessageOrder: string[] = [];
 let unreadProfileId: string | null = null;
 let unreadSyncPromise: Promise<void> | null = null;
 
@@ -29,7 +33,9 @@ function notifyUnreadListeners() {
   unreadListeners.forEach((fn) => {
     try {
       fn();
-    } catch {}
+    } catch (error) {
+      console.warn('[Notifications] Falha ao notificar listeners de unread', error);
+    }
   });
 }
 
@@ -39,6 +45,7 @@ function resetUnreadSubscriptions() {
   });
   unreadSubscriptions.clear();
   unreadMessageIds.clear();
+  unreadMessageOrder.length = 0;
 }
 
 function isChatActive(chatId?: string): boolean {
@@ -85,10 +92,12 @@ async function ensureUnreadSubscriptions(
             if (msg.user_profile_id === unreadProfileId) return;
             if (unreadMessageIds.has(msg.id)) return;
             unreadMessageIds.add(msg.id);
+            unreadMessageOrder.push(msg.id);
             if (unreadMessageIds.size > 2000) {
-              const keep = Array.from(unreadMessageIds).slice(-1000);
-              unreadMessageIds.clear();
-              keep.forEach((id) => unreadMessageIds.add(id));
+              while (unreadMessageOrder.length > 1000) {
+                const oldest = unreadMessageOrder.shift();
+                if (oldest) unreadMessageIds.delete(oldest);
+              }
             }
             if (isChatActive(msg.chat_id)) return;
             incrementUnread(msg.chat_id);
@@ -96,8 +105,8 @@ async function ensureUnreadSubscriptions(
           unreadSubscriptions.set(chat.id, unsub);
         }
       }
-    } catch {
-      // Falha silenciosa para não bloquear o app.
+    } catch (error) {
+      console.warn('[Notifications] Falha ao configurar subscriptions de unread', error);
     } finally {
       unreadSyncPromise = null;
     }
@@ -132,7 +141,9 @@ export function useUnreadCounts(activeChatId?: string) {
       setCounts({});
       return;
     }
-    ensureUnreadSubscriptions(profile.id, subscribeChatMessages).catch(() => {});
+    ensureUnreadSubscriptions(profile.id, subscribeChatMessages).catch((error) => {
+      console.warn('[Notifications] Falha ao inicializar unread counts', error);
+    });
   }, [profile?.id, subscribeChatMessages]);
 
   useEffect(() => {
