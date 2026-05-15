@@ -21,21 +21,27 @@ interface ChatWithDepartment extends Chat {
   department?: Department;
 }
 
+interface UnreadCounts {
+  [chatId: string]: number;
+}
+
 export default function ChatsScreen() {
-  const { user, profile, isOnline } = useAuth();
-  const router = useRouter();
-  const [chats, setChats] = useState<ChatWithDepartment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [companyId, setCompanyId] = useState<string>('');
-  const [showCompanyPicker, setShowCompanyPicker] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newChatName, setNewChatName] = useState('');
-  const [newChatPrivate, setNewChatPrivate] = useState(false);
-  const [newChatDepartmentId, setNewChatDepartmentId] = useState<string>('');
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [creating, setCreating] = useState(false);
+const { user, profile, isOnline } = useAuth();
+const router = useRouter();
+const [chats, setChats] = useState<ChatWithDepartment[]>([]);
+const [loading, setLoading] = useState(true);
+const [searchQuery, setSearchQuery] = useState('');
+const [companies, setCompanies] = useState<Company[]>([]);
+const [companyId, setCompanyId] = useState<string>('');
+const [showCompanyPicker, setShowCompanyPicker] = useState(false);
+const [showCreateModal, setShowCreateModal] = useState(false);
+const [newChatName, setNewChatName] = useState('');
+const [newChatPrivate, setNewChatPrivate] = useState(false);
+const [newChatDepartmentId, setNewChatDepartmentId] = useState<string>('');
+const [departments, setDepartments] = useState<Department[]>([]);
+const [creating, setCreating] = useState(false);
+const [unreadCounts, setUnreadCounts] = useState<UnreadCounts>({});
+const [showUnreadBadges, setShowUnreadBadges] = useState(false);
 
   async function loadData() {
     try {
@@ -111,11 +117,29 @@ export default function ChatsScreen() {
     loadData();
   }, [user, profile, isOnline]);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (companyId) loadChatsForCompany(companyId);
-    }, [companyId])
-  );
+useFocusEffect(
+  useCallback(() => {
+    if (companyId) loadChatsForCompany(companyId);
+  }, [companyId])
+);
+
+function simulateUnreadMessages() {
+  const counts: UnreadCounts = {};
+  chats.forEach(chat => {
+    counts[chat.id] = Math.floor(Math.random() * 10);
+  });
+  setUnreadCounts(counts);
+  setShowUnreadBadges(true);
+}
+
+function markAllAsRead(chatId: string) {
+  if (unreadCounts[chatId] > 0) {
+    setUnreadCounts(prev => ({
+      ...prev,
+      [chatId]: 0,
+    }));
+  }
+}
 
   async function handleCreateChat() {
     if (!newChatName.trim()) {
@@ -184,35 +208,50 @@ export default function ChatsScreen() {
         />
       </View>
 
-      <FlatList
-        data={filteredChats}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.chatItem}
-            onPress={() => router.push(`/chat/${item.id}`)}
-          >
-            <View style={styles.chatIconContainer}>
-              {item.is_private ? (
-                <Ionicons name="lock-closed" size={18} color={colors.textMuted} />
-              ) : (
-                <Text style={styles.hashIcon}>#</Text>
+  <FlatList
+    data={filteredChats}
+    keyExtractor={(item) => item.id}
+    contentContainerStyle={styles.list}
+    renderItem={({ item }) => {
+      const unreadCount = showUnreadBadges ? (unreadCounts[item.id] || 0) : 0;
+      const hasUnread = unreadCount > 0;
+
+      return (
+        <TouchableOpacity
+          style={styles.chatItem}
+          onPress={() => {
+            markAllAsRead(item.id);
+            router.push(`/chat/${item.id}`);
+          }}
+        >
+          <View style={styles.chatIconContainer}>
+            {item.is_private ? (
+              <Ionicons name="lock-closed" size={18} color={colors.textMuted} />
+            ) : (
+              <Text style={styles.hashIcon}>#</Text>
+            )}
+            {hasUnread && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.chatInfo}>
+            <Text style={styles.chatName}>{item.name}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              {item.department && (
+                <View style={styles.deptBadge}>
+                  <Text style={styles.deptBadgeText}>{item.department.name}</Text>
+                </View>
               )}
             </View>
-            <View style={styles.chatInfo}>
-              <Text style={styles.chatName}>{item.name}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                {item.department && (
-                  <View style={styles.deptBadge}>
-                    <Text style={styles.deptBadgeText}>{item.department.name}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-        )}
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+      );
+    }}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="chatbubbles-outline" size={48} color={colors.textMuted} />
@@ -222,14 +261,23 @@ export default function ChatsScreen() {
         }
       />
 
-      {/* FAB - Create Chat */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setShowCreateModal(true)}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="add" size={28} color={colors.text} />
-      </TouchableOpacity>
+  {/* FAB - Create Chat */}
+  <TouchableOpacity
+    style={styles.fab}
+    onPress={() => setShowCreateModal(true)}
+    activeOpacity={0.8}
+  >
+    <Ionicons name="add" size={28} color={colors.text} />
+  </TouchableOpacity>
+
+  {/* Toggle Badges Button */}
+  <TouchableOpacity
+    style={styles.toggleBadgesButton}
+    onPress={simulateUnreadMessages}
+    activeOpacity={0.8}
+  >
+    <Ionicons name={showUnreadBadges ? "eye-off" : "eye"} size={20} color={colors.text} />
+  </TouchableOpacity>
 
       {/* Create Chat Modal */}
       <Modal visible={showCreateModal} transparent animationType="slide">
@@ -393,6 +441,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  unreadBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  unreadBadgeText: {
+    color: colors.text,
+    fontSize: 10,
+    fontWeight: '700',
   },
   hashIcon: {
     color: colors.textMuted,
@@ -437,6 +504,24 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  toggleBadgesButton: {
+    position: 'absolute',
+    right: 20,
+    bottom: 90,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   modalOverlay: {
     flex: 1,
