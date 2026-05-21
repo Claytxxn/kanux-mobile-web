@@ -1,11 +1,7 @@
-server:
-  address: 0.0.0.0
-  port: ${PORT:10000}
-
+## As propriedades abaixo são válidas para Spring Boot, mas podem gerar alertas em validadores YAML externos.
 spring:
   application:
     name: kanux-backend
-
   datasource:
     url: jdbc:postgresql://aws-1-us-east-2.pooler.supabase.com:6543/postgres?prepareThreshold=0&preferQueryMode=simple
     username: ${DB_USERNAME}
@@ -17,7 +13,6 @@ spring:
       minimum-idle: 1
       keepalive-time: 30000
       connection-test-query: SELECT 1
-
   jpa:
     hibernate:
       ddl-auto: none
@@ -25,9 +20,8 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     properties:
       hibernate:
-        "[format_sql]": false
-        "[default_schema]": public
-
+        format_sql: false
+        default_schema: public
   flyway:
     enabled: true
     baseline-on-migrate: true
@@ -36,13 +30,18 @@ spring:
     user: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
+
 logging:
   level:
-    "[com.kanux]": INFO
-    "[org.springframework.security]": WARN
-    "[org.hibernate.SQL]": WARN
+    com.kanux: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
 
 supabase:
   jwt-secret: ${SUPABASE_JWT_SECRET}
   url: ${SUPABASE_URL:https://amybrdlkfocmiolcnybl.supabase.co}
   service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
+
+server:
+  address: 0.0.0.0
+  port: ${PORT:10000}
