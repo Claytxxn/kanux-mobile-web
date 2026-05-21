@@ -1,21 +1,5 @@
 package com.kanux.controller;
 
-import com.kanux.dto.ApiResponse;
-import com.kanux.dto.CreateTicketRequest;
-import com.kanux.dto.UpdateTicketRequest;
-import com.kanux.config.PushNotificationService;
-import com.kanux.entity.Ticket;
-import com.kanux.entity.TicketComment;
-import com.kanux.entity.UserProfile;
-import com.kanux.repository.TicketCommentRepository;
-import com.kanux.repository.TicketRepository;
-import com.kanux.service.WorkingHoursService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,28 +7,56 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.kanux.dto.ApiResponse;
+import com.kanux.dto.CreateTicketRequest;
+import com.kanux.dto.UpdateTicketRequest;
+// import com.kanux.config.PushNotificationService;
+import com.kanux.entity.Ticket;
+import com.kanux.entity.TicketComment;
+import com.kanux.entity.UserProfile;
+import com.kanux.repository.DepartmentRepository;
+import com.kanux.repository.TicketCommentRepository;
+import com.kanux.repository.TicketRepository;
+import com.kanux.service.WorkingHoursService;
+
 @RestController
 @RequestMapping("/api/tickets")
 public class TicketController {
-
-    private static final Logger log = LoggerFactory.getLogger(TicketController.class);
 
     private final TicketRepository ticketRepository;
     private final TicketCommentRepository commentRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final WorkingHoursService workingHoursService;
-    private final PushNotificationService pushNotificationService;
+    private final DepartmentRepository departmentRepository;
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TicketController.class);
+    private final com.kanux.config.PushNotificationService pushNotificationService;
 
     public TicketController(
             TicketRepository ticketRepository,
             TicketCommentRepository commentRepository,
             SimpMessagingTemplate messagingTemplate,
             WorkingHoursService workingHoursService,
-            PushNotificationService pushNotificationService) {
+            DepartmentRepository departmentRepository,
+            com.kanux.config.PushNotificationService pushNotificationService) {
         this.ticketRepository = ticketRepository;
         this.commentRepository = commentRepository;
         this.messagingTemplate = messagingTemplate;
         this.workingHoursService = workingHoursService;
+        this.departmentRepository = departmentRepository;
         this.pushNotificationService = pushNotificationService;
     }
 
@@ -64,7 +76,32 @@ public class TicketController {
 
         if (companyId != null) {
             var tickets = ticketRepository.findByCompanyIdOrderByCreatedAtDesc(UUID.fromString(companyId));
-            return ResponseEntity.ok(ApiResponse.ok(tickets));
+            // Monta um Map para cada ticket, incluindo nome do departamento
+            var result = tickets.stream().map(ticket -> {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("id", ticket.getId());
+                map.put("number", ticket.getNumber());
+                map.put("company_id", ticket.getCompanyId());
+                map.put("department_id", ticket.getDepartmentId());
+                map.put("creator_profile_id", ticket.getCreatorProfileId());
+                map.put("assignee_profile_id", ticket.getAssigneeProfileId());
+                map.put("title", ticket.getTitle());
+                map.put("description", ticket.getDescription());
+                map.put("status", ticket.getStatus());
+                map.put("priority", ticket.getPriority());
+                map.put("created_at", ticket.getCreatedAt());
+                map.put("updated_at", ticket.getUpdatedAt());
+                map.put("resolved_at", ticket.getResolvedAt());
+                // Busca nome do departamento se houver
+                if (ticket.getDepartmentId() != null) {
+                    departmentRepository.findById(java.util.Objects.requireNonNull(ticket.getDepartmentId()))
+                        .ifPresent(dept -> map.put("department_name", dept.getName()));
+                } else {
+                    map.put("department_name", null);
+                }
+                return map;
+            }).collect(Collectors.toList());
+            return ResponseEntity.ok(ApiResponse.ok(result));
         }
 
         return ResponseEntity.badRequest().body(ApiResponse.fail("companyId ou ticketId é obrigatório"));
