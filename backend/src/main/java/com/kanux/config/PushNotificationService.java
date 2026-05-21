@@ -213,6 +213,9 @@ public class PushNotificationService {
         }
     }
 
+    /**
+     * Envia push notification para o usuário designado quando um ticket é atribuído.
+     */
     @Async
     public void notifyTicketAssigned(UUID ticketId, UUID assigneeProfileId, String ticketTitle, String companyId) {
         if (ticketId == null || assigneeProfileId == null) return;
