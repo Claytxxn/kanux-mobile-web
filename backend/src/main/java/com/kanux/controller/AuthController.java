@@ -7,11 +7,18 @@ import com.kanux.entity.Company;
 import com.kanux.repository.CompanyRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse as OASApiResponse;
 import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
+@Tag(name = "Auth", description = "Autenticação e geração de token JWT")
 public class AuthController {
 
     private final CompanyRepository companyRepository;
@@ -20,13 +27,43 @@ public class AuthController {
         this.companyRepository = companyRepository;
     }
 
+    @Operation(
+        summary = "Login",
+        description = "Autentica usuário e retorna instrução para uso do token JWT do Supabase.",
+        requestBody = @RequestBody(
+            required = true,
+            content = @Content(schema = @Schema(implementation = LoginRequest.class))
+        ),
+        responses = {
+            @OASApiResponse(
+                responseCode = "200",
+                description = "Login realizado com sucesso. Use o token JWT do Supabase.",
+                content = @Content(schema = @Schema(example = "{ 'message': 'Use Supabase auth token in Authorization header' }"))
+            )
+        }
+    )
     @PostMapping("/auth/login")
-    public ResponseEntity<ApiResponse<Map<String, String>>> login(@RequestBody LoginRequest req) {
+    public ResponseEntity<ApiResponse<Map<String, String>>> login(@org.springframework.web.bind.annotation.RequestBody LoginRequest req) {
         return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Use Supabase auth token in Authorization header")));
     }
 
+    @Operation(
+        summary = "Verificar empresa",
+        description = "Verifica se uma empresa existe pelo slug ou número.",
+        requestBody = @RequestBody(
+            required = true,
+            content = @Content(schema = @Schema(implementation = VerifyCompanyRequest.class))
+        ),
+        responses = {
+            @OASApiResponse(
+                responseCode = "200",
+                description = "Empresa encontrada ou não encontrada.",
+                content = @Content(schema = @Schema(example = "{ 'id': '...', 'name': '...', 'slug': '...', 'company_number': 123 }"))
+            )
+        }
+    )
     @PostMapping("/verify-company")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyCompany(@RequestBody VerifyCompanyRequest req) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyCompany(@org.springframework.web.bind.annotation.RequestBody VerifyCompanyRequest req) {
         if (req.getSlug() == null || req.getSlug().isBlank())
             return ResponseEntity.badRequest().body(ApiResponse.fail("slug is required"));
 
