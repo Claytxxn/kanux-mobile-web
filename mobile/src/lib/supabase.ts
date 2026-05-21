@@ -51,21 +51,7 @@ export type CompanyMember = {
   joined_at: string;
 };
 
-export type Chat = {
-  id: string;
-  company_id: string;
-  department_id: string | null;
-  name: string;
-  is_private: boolean;
-  only_admins_send: boolean;
-  created_by: string | null;
-  created_at: string;
-};
-
-export type Message = {
-  id: string;
-  chat_id: string;
-  user_profile_id: string;
+// ...definição única de Ticket mantida abaixo...
   content: string;
   attachments: any;
   created_at: string;
@@ -86,6 +72,7 @@ export type Ticket = {
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
+  department_name?: string | null;
 };
 
 export type TicketComment = {

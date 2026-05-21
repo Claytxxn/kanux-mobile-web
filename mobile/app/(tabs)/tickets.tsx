@@ -192,6 +192,11 @@ export default function TicketsScreen() {
               </View>
             </View>
             <Text style={styles.ticketTitle} numberOfLines={2}>{item.title}</Text>
+            {item.department_name && (
+              <Text style={styles.departmentName} numberOfLines={1}>
+                Departamento: {item.department_name}
+              </Text>
+            )}
             {item.description && (
               <Text style={styles.ticketDescription} numberOfLines={2}>
                 {item.description}
@@ -455,6 +460,13 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  departmentName: {
+    fontSize: 13,
+    color: colors.primary,
+    marginBottom: 2,
+    marginTop: 2,
+    fontWeight: '500',
   },
   ticketDate: {
     fontSize: 13,
