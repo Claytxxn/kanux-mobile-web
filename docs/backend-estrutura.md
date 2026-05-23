@@ -46,5 +46,15 @@ backend/
 
 ---
 
+## Histórico de Migrações Flyway
+
+- **2026-05-23:** Corrigido erro de deploy causado por duplicidade de versão nas migrations Flyway.
+    - Antes: Existiam dois arquivos `V2__*.sql` (`add_password_hash_to_user_profiles` e `seed_super_admin`).
+    - Agora: `V2__add_password_hash_to_user_profiles.sql` (adiciona coluna), `V3__add_missing_profile_columns.sql` (adiciona colunas extras), `V4__seed_super_admin.sql` (insere super admin).
+    - Motivo: O Flyway exige versões únicas para cada migration. A duplicidade impedia o deploy.
+    - Ação: Arquivo de seed renomeado para V4 e registrado aqui.
+
+---
+
 ## Histórico de Alterações
 - 2026-05-23: Estrutura inicial documentada.
