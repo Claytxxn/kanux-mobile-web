@@ -14,8 +14,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kanux.mobile"
-      ,"buildNumber": "1005"
+      "bundleIdentifier": "com.kanux.mobile",
+      "buildNumber": "1005"
     },
     "android": {
       "adaptiveIcon": {
@@ -34,7 +34,8 @@
           "androidMode": "default",
           "androidCollapsedTitle": "Mensagens"
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true
@@ -42,7 +43,6 @@
     "extra": {
       "supabaseUrl": "https://amybrdlkfocmiolcnybl.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFteWJyZGxrZm9jbWlvbGNueWJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0MDQ3ODYsImV4cCI6MjA4Mzk4MDc4Nn0.B4R_9h58oSeC56l_eLafQk1fJpI29cM8T5rzqM5s2lg",
-
       "isProduction": true,
       "apiUrl": "https://kanux-mobile-web.onrender.com",
       "eas": {

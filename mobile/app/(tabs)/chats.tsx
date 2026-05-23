@@ -5,22 +5,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, getCompanyChats, Chat, getDepartments, Department, Company } from '../../src/lib/supabase';
 import {
+  initDatabase,
+  getCachedChats,
+  saveChat,
+  addPendingOperation
+} from '../../src/lib/offlineCache';
+import {
   getOfflineChats,
-  getOfflineCompanies,
   getOfflineDepartments,
-  getUserCompany,
   saveChatsOffline,
-  saveCompaniesOffline,
   saveDepartmentsOffline,
-  saveUserCompany,
+  saveUserCompany
 } from '../../src/lib/offlineStorage';
 import { api } from '../../src/lib/api';
 import { colors, spacing, borderRadius } from '../../src/theme';
 import { useUnreadCounts } from '../../src/contexts/NotificationContext';
 
-interface ChatWithDepartment extends Chat {
-  department?: Department;
-}
+type ChatWithDepartment = Chat & { department?: Department };
 
 export default function ChatsScreen() {
   const { user, profile, isOnline } = useAuth();
@@ -41,22 +42,17 @@ export default function ChatsScreen() {
 
   async function loadData() {
     try {
-      const companiesList = isOnline ? await getUserCompanies() : await getOfflineCompanies();
-      setCompanies(companiesList);
-
-      if (isOnline && companiesList.length > 0) {
-        await saveCompaniesOffline(companiesList);
+      initDatabase();
+      let chatsList: ChatWithDepartment[] = [];
+      if (isOnline) {
+        const chats = await getCompanyChats(companyId);
+        chatsList = chats;
+        chats.forEach(saveChat);
+      } else {
+        await new Promise(res => setTimeout(res, 100));
+        chatsList = await getOfflineChats(companyId);
       }
-
-      // Usa empresa salva ou a primeira
-      const savedId = await getUserCompany();
-      const valid = companiesList.find(c => c.id === savedId);
-      const activeId = valid ? savedId! : companiesList[0]?.id || '';
-      if (activeId) {
-        setCompanyId(activeId);
-        await saveUserCompany(activeId);
-        await loadChatsForCompany(activeId);
-      }
+      setChats(chatsList);
     } catch (error) {
       console.error('Erro ao carregar chats:', error);
     } finally {
@@ -66,17 +62,17 @@ export default function ChatsScreen() {
 
   async function loadChatsForCompany(cId: string) {
     try {
-      const [chatsData, depts] = isOnline
-        ? await Promise.all([getCompanyChats(cId), getDepartments(cId)])
-        : await Promise.all([getOfflineChats(cId), getOfflineDepartments(cId)]);
-
+      let chatsData: Chat[] = [];
+      let depts: Department[] = [];
       if (isOnline) {
+        [chatsData, depts] = await Promise.all([getCompanyChats(cId), getDepartments(cId)]);
         await Promise.all([
           saveChatsOffline(cId, chatsData),
           saveDepartmentsOffline(cId, depts),
         ]);
+      } else {
+        [chatsData, depts] = await Promise.all([getOfflineChats(cId), getOfflineDepartments(cId)]);
       }
-
       setDepartments(depts);
       const chatsWithDept: ChatWithDepartment[] = chatsData.map(c => ({
         ...c,
@@ -130,24 +126,37 @@ export default function ChatsScreen() {
     }
     setCreating(true);
     try {
-      const result = await api.createChat({
-        companyId,
-        name: newChatName.trim(),
-        isPrivate: newChatPrivate,
-        departmentId: newChatDepartmentId || undefined,
-      });
-      if (result?.data) {
-        const dept = departments.find(d => d.id === newChatDepartmentId);
-        const newChat: ChatWithDepartment = { ...result.data, department: dept };
-        setChats(prev => [newChat, ...prev]);
-        setNewChatName('');
-        setNewChatPrivate(false);
-        setNewChatDepartmentId('');
-        setShowCreateModal(false);
+      if (isOnline) {
+        const chat = await api.createChat({
+          name: newChatName.trim(),
+          company_id: companyId,
+          department_id: newChatDepartmentId || null,
+          private_chat: newChatPrivate,
+        });
+        saveChat(chat);
+        await loadData();
+      } else {
+        const tempId = 'offline-' + Date.now();
+        const chat: ChatWithDepartment = {
+          id: tempId,
+          name: newChatName.trim(),
+          company_id: companyId,
+          department_id: newChatDepartmentId || null,
+          private_chat: newChatPrivate,
+          only_admins_send: false,
+          created_by: user?.id || '',
+          created_at: new Date().toISOString(),
+        };
+        saveChat(chat);
+        await addPendingOperation({ type: 'createChat', payload: chat });
+        setChats(prev => [chat, ...prev]);
       }
+      setShowCreateModal(false);
+      setNewChatName('');
+      setNewChatPrivate(false);
+      setNewChatDepartmentId('');
     } catch (error) {
-      console.error('Erro ao criar chat:', error);
-      Alert.alert('Erro', 'Falha ao criar chat');
+      Alert.alert('Erro', 'Não foi possível criar o chat.');
     } finally {
       setCreating(false);
     }
@@ -203,7 +212,7 @@ export default function ChatsScreen() {
               }}
             >
               <View style={styles.chatIconContainer}>
-                {item.is_private ? (
+                {item.private_chat ? (
                   <Ionicons name="lock-closed" size={18} color={colors.textMuted} />
                 ) : (
                   <Text style={styles.hashIcon}>#</Text>
