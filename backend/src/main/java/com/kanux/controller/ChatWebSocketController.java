@@ -102,9 +102,9 @@ public class ChatWebSocketController {
             }
 
             // Idempotência: retries/offline sync com mesmo client_message_id não geram duplicata.
-            if (clientMessageId != null && !clientMessageId.isBlank() && !"null".equals(clientMessageId)) {
-                var existing = messageRepository.findByChatIdAndUserProfileIdAndClientMessageId(
-                        chatUuid, senderProfileId, clientMessageId);
+                if (clientMessageId != null && !clientMessageId.isBlank() && !"null".equals(clientMessageId)) {
+                java.util.Optional<Message> existing = messageRepository.findByChatIdAndUserProfileIdAndClientMessageId(
+                    chatUuid, senderProfileId, clientMessageId);
                 if (existing.isPresent()) {
                     Message dedup = existing.get();
                     String senderNameDedup = userProfileRepository.findById(senderProfileId)
