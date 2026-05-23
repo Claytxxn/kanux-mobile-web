@@ -55,6 +55,35 @@ public void sendChatMessage(@Payload Map<String, Object> msg, Principal principa
 
 ---
 
+## Histórico de Decisões Técnicas - WebSocket Kanux
+
+## 2026-05-23: Conflito de Bean Corrigido
+
+Foi identificado um conflito de beans no contexto Spring Boot devido à existência de dois controllers WebSocket com o mesmo nome de bean (`chatWebSocketController`):
+
+- `com.kanux.controller.ChatWebSocketController` (handler principal, com lógica de negócio completa)
+- `com.kanux.ws.ChatWebSocketController` (handlers de API/dto, estrutura simplificada)
+
+**Decisão:**
+O bean do controller em `com.kanux.ws` foi explicitamente renomeado para `chatWebSocketControllerWs` usando `@Controller("chatWebSocketControllerWs")`, permitindo coexistência dos dois controllers sem sobrescrever beans no contexto Spring.
+
+**Motivo:**
+- Evitar falha de inicialização do Spring Boot (ConflictingBeanDefinitionException)
+- Permitir evolução da API WebSocket sem quebrar handlers legados
+
+**Ação:**
+- Código alterado em: `backend/src/main/java/com/kanux/ws/ChatWebSocketController.java`
+- Documentação atualizada em: `docs/backend-websocket.md` (este arquivo)
+
+---
+
+## Como proceder em futuras alterações
+- Sempre analisar esta documentação antes de criar/renomear controllers WebSocket.
+- Se criar novo controller, defina bean name único se houver risco de conflito.
+- Após qualquer alteração, registre aqui a decisão e o motivo.
+
+---
+
 ## Referências
 - [Spring WebSocket Docs](https://docs.spring.io/spring-framework/docs/current/reference/html/web.html#websocket)
 - [STOMP Protocol](https://stomp.github.io/)

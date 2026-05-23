@@ -11,7 +11,7 @@ import com.kanux.ws.dto.MessageDTO;
 import java.util.ArrayList;
 import java.util.Objects;
 
-@Controller
+@Controller("chatWebSocketControllerWs")
 public class ChatWebSocketController {
     private final SimpMessagingTemplate messagingTemplate;
 
