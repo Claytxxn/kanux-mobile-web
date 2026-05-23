@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useWebSocket } from './WebSocketContext';
 import { useAuth } from './AuthContext';
 import { 
   getPendingMessages, 
@@ -6,6 +7,9 @@ import {
   getOfflineMessages,
   saveMessagesOffline,
   addPendingMessage,
+  getPendingTickets,
+  replacePendingTickets,
+  addPendingTicket,
   saveCompaniesOffline,
   saveChatsOffline,
   saveDepartmentsOffline,
@@ -20,6 +24,8 @@ import {
   getDepartments,
   getUserCompanies,
   sendMessage as sendApiMessage,
+  sendTicketComment as sendApiTicketComment,
+  createTicket as sendApiCreateTicket,
 } from '../lib/supabase';
 import { api } from '../lib/api';
 
@@ -33,6 +39,7 @@ const SyncContext = createContext<SyncContextType | undefined>(undefined);
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const { isOnline, profile } = useAuth();
+  const ws = useWebSocket();
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -136,12 +143,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const syncNow = async () => {
     if (!isOnline || isSyncing || !profile) return;
-    
     setIsSyncing(true);
     try {
+      // Mensagens
       const pending = await getPendingMessages();
       const failed: any[] = [];
-      
+
       for (const message of pending) {
         try {
           const safeOptions = {
@@ -150,7 +157,25 @@ export function SyncProvider({ children }: { children: ReactNode }) {
               || `${message.chatId}:${new Date(message.createdAt || Date.now()).getTime()}:${Math.random().toString(36).slice(2, 10)}`,
           };
 
-          const sent = await sendApiMessage(message.chatId, message.content, safeOptions);
+          let sent = false;
+          if (ws?.isConnected && ws.sendMessageWs) {
+            sent = ws.sendMessageWs(
+              message.chatId,
+              message.content,
+              safeOptions.messageType,
+              safeOptions.mediaUrl,
+              safeOptions.mediaName,
+              safeOptions.clientMessageId
+            );
+          }
+          if (!sent) {
+            try {
+              const apiSent = await sendApiMessage(message.chatId, message.content, safeOptions);
+              sent = !!apiSent;
+            } catch (e) {
+              sent = false;
+            }
+          }
           if (!sent) {
             failed.push({ ...message, options: safeOptions });
           }
@@ -159,9 +184,38 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           failed.push(message);
         }
       }
-      
       await replacePendingMessages(failed);
       setPendingCount(failed.length);
+
+      // Tickets
+      const pendingTickets = await getPendingTickets();
+      const failedTickets: any[] = [];
+      for (const ticket of pendingTickets) {
+        try {
+          let sent = false;
+          if (ws?.isConnected && ws.createTicketWs) {
+            sent = ws.createTicketWs(ticket, () => {});
+          }
+          if (!sent) {
+            try {
+              const apiSent = await sendApiCreateTicket(ticket);
+              sent = !!apiSent;
+            } catch (e) {
+              sent = false;
+            }
+          }
+          if (!sent) {
+            failedTickets.push(ticket);
+          }
+        } catch (error) {
+          console.error('Error syncing ticket:', error);
+          failedTickets.push(ticket);
+        }
+      }
+      await replacePendingTickets(failedTickets);
+
+      // Comentários de ticket (exemplo: se implementar addPendingTicketComment)
+      // ...
 
       await warmupOfflineData();
     } catch (error) {
