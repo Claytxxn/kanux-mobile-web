@@ -17,6 +17,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 
 // ── Auxiliares de separador de data ─────────────────────────────────────────
 function getDateLabel(dateStr: string): string {
@@ -473,13 +474,14 @@ export default function ChatScreen() {
   const listItems = useMemo(() => buildListItems(sortedMessages, profile?.id), [sortedMessages, profile?.id]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : (StatusBar.currentHeight ?? 0)}
-    >
+    <AnimatedContainer type="fade" duration={200}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : (StatusBar.currentHeight ?? 0)}
+      >
         {/* Barra de informações do chat */}
-      <View style={styles.chatHeader}>
+        <View style={styles.chatHeader}>
         <View style={styles.chatHeaderInfo}>
           <Text style={styles.chatHeaderName}>{chatInfo?.name || 'Chat'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -730,6 +732,7 @@ export default function ChatScreen() {
         </View>
       </Modal>
     </KeyboardAvoidingView>
+    </AnimatedContainer>
   );
 }
 

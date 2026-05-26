@@ -10,6 +10,7 @@ import { ENV } from '../../src/lib/env';
 import { colors, spacing } from '../../src/theme';
 import { getWorkingHoursRestrictionMessage } from '../../src/lib/workingHours';
 import * as ImagePicker from 'expo-image-picker';
+import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 
 const TICKET_IMAGE_PREFIX = '[image]:';
 
@@ -259,12 +260,13 @@ export default function TicketScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : (StatusBar.currentHeight ?? 0)}
-    >
-      {ticket && (
+    <AnimatedContainer type="fade" duration={200}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : (StatusBar.currentHeight ?? 0)}
+      >
+        {ticket && (
         <>
           {/* Header do Ticket */}
           <TouchableOpacity style={styles.ticketHeader} onPress={() => setShowInfo(!showInfo)} activeOpacity={0.7}>

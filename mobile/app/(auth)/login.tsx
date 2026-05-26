@@ -10,6 +10,7 @@ import { api, initApi, setAuthToken } from '../../src/lib/api';
 import { colors, spacing, borderRadius, shadows } from '../../src/theme';
 import KanuxLogo from '../../src/components/KanuxLogo';
 import { GradientButton } from '../../src/components/Button';
+import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 
 export default function LoginScreen() {
   const [email, setEmail]             = useState('');
@@ -45,12 +46,13 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : (StatusBar.currentHeight ?? 0)}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <KanuxLogo size="lg" />
-          <Text style={styles.subtitle}>{isSignUp ? 'Crie sua conta' : 'Bem-vindo de volta'}</Text>
-        </View>
+    <AnimatedContainer type="fade" duration={200}>
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : (StatusBar.currentHeight ?? 0)}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <KanuxLogo size="lg" />
+            <Text style={styles.subtitle}>{isSignUp ? 'Crie sua conta' : 'Bem-vindo de volta'}</Text>
+          </View>
         <View style={styles.form}>
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email</Text>
@@ -92,13 +94,14 @@ export default function LoginScreen() {
             <Text style={styles.linkText}>
               {isSignUp ? 'Já tem uma conta? Entre' : 'Não tem conta? Cadastre-se'}
             </Text>
-          </TouchableOpacity>
-        </View>
-        </View>
-        <Text style={styles.footer}>© 2025 Kanux - Help Desk</Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
+      </TouchableOpacity>
+      </View>
+    </View>
+    <Text style={styles.footer}>© 2025 Kanux - Help Desk</Text>
+    </ScrollView>
+  </KeyboardAvoidingView>
+</AnimatedContainer>
+);
 }
 
 const styles = StyleSheet.create({

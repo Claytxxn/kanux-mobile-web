@@ -4,6 +4,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, getCompanyTickets, Company, Ticket } from '../../src/lib/supabase';
+import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 import {
   getOfflineCompanies,
   getOfflineTickets,
@@ -119,11 +120,12 @@ export default function TicketsScreen() {
   const filters = ['ALL', 'OPEN', 'PENDING', 'RESOLVED', 'CLOSED'];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Chamados</Text>
-        <Text style={styles.subtitle}>{tickets.length} tickets</Text>
-      </View>
+    <AnimatedContainer type="fade" duration={200}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Chamados</Text>
+          <Text style={styles.subtitle}>{tickets.length} tickets</Text>
+        </View>
 
       {/* Company Selector */}
       {companies.length > 1 && (
@@ -263,11 +265,12 @@ export default function TicketsScreen() {
                   )}
                 </TouchableOpacity>
               )}
-            />
-          </View>
+/>
         </View>
-      </Modal>
+      </View>
+    </Modal>
     </View>
+    </AnimatedContainer>
   );
 }
 

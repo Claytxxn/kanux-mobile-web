@@ -4,6 +4,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, getCompanyChats, Chat, getDepartments, Department, Company } from '../../src/lib/supabase';
+import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 import {
   getOfflineChats,
   getOfflineCompanies,
@@ -180,23 +181,24 @@ function markAllAsRead(chatId: string) {
   );
 
   return (
-    <View style={styles.container}>
-      {/* Company Selector */}
-      {companies.length > 1 && (
-        <TouchableOpacity
-          style={styles.companySelector}
-          onPress={() => setShowCompanyPicker(true)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.companySelectorLeft}>
-            <Ionicons name="business" size={16} color={colors.primary} />
-            <Text style={styles.companySelectorText} numberOfLines={1}>
-              {companies.find(c => c.id === companyId)?.name || 'Selecionar empresa'}
-            </Text>
-          </View>
-          <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
-        </TouchableOpacity>
-      )}
+    <AnimatedContainer type="fade" duration={200}>
+      <View style={styles.container}>
+        {/* Company Selector */}
+        {companies.length > 1 && (
+          <TouchableOpacity
+            style={styles.companySelector}
+            onPress={() => setShowCompanyPicker(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.companySelectorLeft}>
+              <Ionicons name="business" size={16} color={colors.primary} />
+              <Text style={styles.companySelectorText} numberOfLines={1}>
+                {companies.find(c => c.id === companyId)?.name || 'Selecionar empresa'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
 
       <View style={styles.searchContainer}>
         <TextInput
@@ -374,11 +376,12 @@ function markAllAsRead(chatId: string) {
                   <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
                 )}
               </TouchableOpacity>
-            ))}
-          </View>
+        ))}
         </View>
-      </Modal>
+      </View>
+    </Modal>
     </View>
+    </AnimatedContainer>
   );
 }
 
