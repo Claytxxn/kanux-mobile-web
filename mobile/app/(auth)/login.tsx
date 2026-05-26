@@ -1,6 +1,6 @@
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StatusBar,
+  Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -9,6 +9,7 @@ import { supabase } from '../../src/lib/supabase';
 import { api, initApi, setAuthToken } from '../../src/lib/api';
 import { colors, spacing, borderRadius, shadows } from '../../src/theme';
 import KanuxLogo from '../../src/components/KanuxLogo';
+import { GradientButton } from '../../src/components/Button';
 
 export default function LoginScreen() {
   const [email, setEmail]             = useState('');
@@ -80,21 +81,19 @@ export default function LoginScreen() {
               </View>
             </View>
           )}
-          <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleAuth} disabled={loading} activeOpacity={0.8}>
-            {loading ? <ActivityIndicator color={colors.text} />
-              : (
-                <View style={styles.buttonContent}>
-                  <Ionicons name={isSignUp ? 'person-add' : 'log-in'} size={20} color={colors.text} />
-                  <Text style={styles.buttonText}>{isSignUp ? 'Criar Conta' : 'Entrar'}</Text>
-                </View>
-              )}
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.linkButton} onPress={() => setIsSignUp(!isSignUp)}>
+        <GradientButton
+          title={isSignUp ? 'Criar Conta' : 'Entrar'}
+          loading={loading}
+          onPress={handleAuth}
+          style={{ marginTop: spacing.lg }}
+        />
+        <View style={{ marginTop: spacing.md, alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
             <Text style={styles.linkText}>
               {isSignUp ? 'Já tem uma conta? Entre' : 'Não tem conta? Cadastre-se'}
             </Text>
           </TouchableOpacity>
+        </View>
         </View>
         <Text style={styles.footer}>© 2025 Kanux - Help Desk</Text>
       </ScrollView>
@@ -114,11 +113,7 @@ const styles = StyleSheet.create({
   inputIcon:      { paddingLeft: spacing.md },
   inputWithIcon:  { flex: 1, padding: spacing.md, color: colors.text, fontSize: 16 },
   eyeButton:      { padding: spacing.md },
-  button:         { backgroundColor: colors.primary, borderRadius: borderRadius.md, padding: spacing.md, alignItems: 'center', marginTop: spacing.lg, ...shadows.brand },
-  buttonDisabled: { opacity: 0.6 },
-  buttonContent:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  buttonText:     { color: colors.text, fontSize: 18, fontWeight: '600' },
-  linkButton:     { marginTop: spacing.lg, alignItems: 'center', padding: spacing.sm },
+  linkButton: { alignItems: 'center', padding: spacing.sm },
   linkText:       { color: colors.primary, fontSize: 15, fontWeight: '500' },
   footer:         { textAlign: 'center', color: colors.textMuted, fontSize: 12, marginTop: spacing.xxl },
 });

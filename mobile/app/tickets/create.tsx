@@ -8,6 +8,7 @@ import { getUserCompany, saveUserCompany } from '../../src/lib/offlineStorage';
 import { colors, spacing, borderRadius } from '../../src/theme';
 import { getWorkingHoursRestrictionMessage } from '../../src/lib/workingHours';
 import { useWebSocket } from '../../src/contexts/WebSocketContext';
+import { GradientButton } from '../../src/components/Button';
 
 export default function CreateTicketScreen() {
   const { profile } = useAuth();
@@ -251,20 +252,12 @@ export default function CreateTicketScreen() {
         </View>
 
         {/* Submit */}
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+        <GradientButton
+          title="Abrir Chamado"
+          loading={loading}
           onPress={handleCreate}
-          disabled={loading || blockedByWorkingHours}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.text} />
-          ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="send" size={18} color={colors.text} />
-              <Text style={styles.submitButtonText}>Abrir Chamado</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+          disabled={blockedByWorkingHours}
+        />
         {blockedByWorkingHours && <Text style={styles.emptyHint}>{workingHoursMessage}</Text>}
       </View>
     </ScrollView>
@@ -325,11 +318,6 @@ const styles = StyleSheet.create({
   },
   priorityText: { color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
   priorityTextActive: { color: colors.text },
-  submitButton: {
-    backgroundColor: colors.primary, borderRadius: borderRadius.sm,
-    padding: spacing.md, alignItems: 'center', marginTop: spacing.xl,
-  },
-  submitButtonDisabled: { opacity: 0.5 },
-  submitButtonText: { color: colors.text, fontSize: 16, fontWeight: '600' },
+  emptyHint: { padding: spacing.md, color: colors.textMuted, fontSize: 14, textAlign: 'center' },
 });
 

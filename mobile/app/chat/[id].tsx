@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // ── Auxiliares de separador de data ─────────────────────────────────────────
 function getDateLabel(dateStr: string): string {
@@ -620,17 +621,27 @@ export default function ChatScreen() {
               multiline
               maxLength={1000}
             />
-            {sending ? (
-              <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: spacing.sm }} />
-            ) : (
-              <TouchableOpacity
-                style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
-                onPress={handleSend}
-                disabled={!newMessage.trim()}
-              >
-                <Ionicons name="send" size={18} color="#fff" />
-              </TouchableOpacity>
-            )}
+{sending ? (
+          <ActivityIndicator size="small" color="#FFFFFF" style={{ marginLeft: spacing.sm }} />
+        ) : (
+          <TouchableOpacity
+            onPress={handleSend}
+            disabled={!newMessage.trim()}
+            activeOpacity={0.7}
+          >
+            <LinearGradient
+              colors={['#8B5CF6', '#6D28D9']}
+              style={[
+                styles.sendButton,
+                !newMessage.trim() && styles.sendButtonDisabled,
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name="send" size={18} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
           </>
         ) : (
           <View style={styles.blockedInput}>
@@ -1084,10 +1095,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   sendButton: {
-    backgroundColor: colors.primary,
     borderRadius: 20,
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: spacing.xs,
