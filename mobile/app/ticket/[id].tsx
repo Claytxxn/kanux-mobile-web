@@ -424,7 +424,8 @@ export default function TicketScreen() {
         name="Foto do ticket"
         onClose={() => setPreviewImageUrl(null)}
       />
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </AnimatedContainer>
   );
 }
 
