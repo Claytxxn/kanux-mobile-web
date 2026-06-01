@@ -7,7 +7,7 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { api } from '../../src/lib/api';
 import { ENV } from '../../src/lib/env';
 import { supabase } from '../../src/lib/supabase';
-import { colors, spacing } from '../../src/theme';
+import { colors, spacing, borderRadius } from '../../src/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
 
 export default function ProfileScreen() {
@@ -142,7 +142,7 @@ export default function ProfileScreen() {
           )}
           <View style={styles.avatarEditBadge}>
             {uploadingPhoto ? (
-              <ActivityIndicator size={14} color={colors.text} />
+              <ActivityIndicator size={14} color={colors.primary} />
             ) : (
               <Ionicons name="camera" size={14} color={colors.text} />
             )}
@@ -394,8 +394,8 @@ const styles = StyleSheet.create({
   signOutText: { fontSize: 16, color: colors.text, fontWeight: '600' },
   version: { textAlign: 'center', color: colors.textMuted, fontSize: 12, marginTop: spacing.lg, marginBottom: spacing.xl },
   // Modal de edição
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: colors.backgroundLight, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: spacing.lg, paddingBottom: spacing.xl },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: colors.surfaceContainer, borderTopLeftRadius: borderRadius.lg, borderTopRightRadius: borderRadius.lg, padding: spacing.lg, paddingBottom: spacing.xl },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: spacing.lg },
   fieldLabel: { fontSize: 14, color: colors.textSecondary, marginBottom: spacing.xs },
   modalInput: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md, color: colors.text, fontSize: 16, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md },

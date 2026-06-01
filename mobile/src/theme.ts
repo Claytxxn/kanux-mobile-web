@@ -1,7 +1,7 @@
 // Theme colors for the app - Discord-inspired Dark Theme
 export const colors = {
   // Primary colors - Discord Blurple
-  primary: '#5865F2',
+  primary: '#3b82f6',
   primaryDark: '#4752C4',
   primaryLight: '#7289DA',
   primaryMuted: '#9BA4D4',
@@ -11,6 +11,10 @@ export const colors = {
   backgroundLight: '#2B2D31',
   surface: '#313338',
   surfaceLight: '#383A40',
+  // Container backgrounds for cards/modals
+  surfaceContainer: '#313338',
+  // Higher-contrast container for skeletons/placeholders
+  surfaceContainerHigh: '#383A40',
 
   // Text colors
   text: '#F2F3F5',
@@ -29,10 +33,10 @@ export const colors = {
   priorityLow: '#23A559',
 
   // Status ticket colors
-  statusOpen: '#5865F2',
+  statusOpen: '#3b82f6',
   statusPending: '#F0B232',
   statusResolved: '#23A559',
-  statusClosed: '#80848E',
+  statusClosed: '#8e9099',
 
   // Brand colors
   brand: '#5865F2',

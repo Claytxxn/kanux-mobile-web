@@ -13,6 +13,7 @@ import {
   saveUserCompany,
 } from '../../src/lib/offlineStorage';
 import { colors, spacing, borderRadius, shadows } from '../../src/theme';
+import { Badge } from '../../src/components/Badge';
 
 const statusLabels: Record<string, string> = {
   ALL: 'Todos',
@@ -185,11 +186,7 @@ export default function TicketsScreen() {
                 <Text style={styles.ticketHash}>#</Text>
                 <Text style={styles.ticketNumber}>{item.number || item.id.slice(0, 8)}</Text>
               </View>
-              <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.priority) + '20' }]}>
-                <Text style={[styles.priorityBadgeText, { color: getPriorityColor(item.priority) }]}>
-                  {priorityLabels[item.priority?.toUpperCase()] || item.priority}
-                </Text>
-              </View>
+              <Badge label={priorityLabels[item.priority?.toUpperCase()] || item.priority} color={getPriorityColor(item.priority)} variant="soft" />
             </View>
             <Text style={styles.ticketTitle} numberOfLines={2}>{item.title}</Text>
             {item.description && (
@@ -198,11 +195,7 @@ export default function TicketsScreen() {
               </Text>
             )}
             <View style={styles.ticketFooter}>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-                <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-                  {statusLabels[item.status?.toUpperCase()] || item.status}
-                </Text>
-              </View>
+              <Badge label={statusLabels[item.status?.toUpperCase()] || item.status} color={getStatusColor(item.status)} variant="soft" />
               <Text style={styles.ticketDate}>
                 {new Date(item.created_at).toLocaleDateString('pt-BR')}
               </Text>
@@ -275,8 +268,8 @@ function getStatusColor(status: string) {
   switch (status?.toUpperCase()) {
     case 'OPEN': return colors.statusOpen;
     case 'PENDING': return colors.statusPending;
-    case 'RESOLVED': return colors.success;
-    case 'CLOSED': return colors.textMuted;
+    case 'RESOLVED': return colors.statusResolved;
+    case 'CLOSED': return colors.statusClosed;
     default: return colors.textMuted;
   }
 }
@@ -493,9 +486,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: colors.backgroundLight,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
+    backgroundColor: colors.surfaceContainer,
+    borderTopLeftRadius: borderRadius.lg,
+    borderTopRightRadius: borderRadius.lg,
     maxHeight: '60%',
     paddingBottom: spacing.xl,
   },

@@ -257,7 +257,7 @@ export default function CreateTicketScreen() {
           disabled={loading || blockedByWorkingHours}
         >
           {loading ? (
-            <ActivityIndicator color={colors.text} />
+            <ActivityIndicator color={colors.primary} />
           ) : (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="send" size={18} color={colors.text} />

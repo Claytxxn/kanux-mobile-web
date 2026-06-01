@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { MediaPreviewModal } from '../../src/components/MediaPreviewModal';
 import { TypingIndicator } from '../../src/components/TypingIndicator';
-import { colors, spacing } from '../../src/theme';
+import { colors, spacing, borderRadius } from '../../src/theme';
 import { useOfflineMessages } from '../../src/contexts/SyncContext';
 import { useWebSocket } from '../../src/contexts/WebSocketContext';
 import { supabase, getChatMembersForChat, addMemberToChat, removeMemberFromChat, getCompanyMembers, ChatMember, Chat } from '../../src/lib/supabase';
@@ -902,13 +902,13 @@ const styles = StyleSheet.create({
   // Estilos do Modal de Membros
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: colors.surfaceContainer,
+    borderTopLeftRadius: borderRadius.lg,
+    borderTopRightRadius: borderRadius.lg,
     padding: spacing.lg,
     maxHeight: '80%',
   },

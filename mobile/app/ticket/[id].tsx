@@ -406,7 +406,7 @@ export default function TicketScreen() {
               disabled={!newComment.trim() || submitting || blockedByWorkingHours}
             >
               {submitting ? (
-                <ActivityIndicator size="small" color={colors.text} />
+                <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <Text style={styles.sendButtonText}>Enviar</Text>
               )}

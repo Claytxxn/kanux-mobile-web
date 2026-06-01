@@ -1268,9 +1268,9 @@ const styles = StyleSheet.create({
   toggleLabel: { fontSize: 14, fontWeight: '600', color: colors.text },
   toggleSub: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalScroll: { maxHeight: '90%' },
-  modalContent: { backgroundColor: colors.backgroundLight, borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: spacing.lg, paddingBottom: spacing.xxl },
+  modalContent: { backgroundColor: colors.surfaceContainer, borderTopLeftRadius: borderRadius.lg, borderTopRightRadius: borderRadius.lg, padding: spacing.lg, paddingBottom: spacing.xxl },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
   fieldLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.5, marginBottom: 5, marginTop: spacing.md, textTransform: 'uppercase' },

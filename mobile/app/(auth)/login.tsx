@@ -82,7 +82,7 @@ export default function LoginScreen() {
           )}
           <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleAuth} disabled={loading} activeOpacity={0.8}>
-            {loading ? <ActivityIndicator color={colors.text} />
+            {loading ? <ActivityIndicator color={colors.primary} />
               : (
                 <View style={styles.buttonContent}>
                   <Ionicons name={isSignUp ? 'person-add' : 'log-in'} size={20} color={colors.text} />
