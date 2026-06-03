@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
   filterGroupLabel: { fontSize: 11, color: colors.textMuted, fontWeight: '600' },
   filterChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: borderRadius.md,
     borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background,
   },
   chipActive: { borderColor: colors.primary, backgroundColor: colors.primary + '18' },

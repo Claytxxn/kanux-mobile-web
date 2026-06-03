@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     marginBottom: spacing.xs,
     padding: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceContainer,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -417,8 +417,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   searchInput: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
     color: colors.text,
     fontSize: 16,
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   chatItem: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceContainer,
     borderRadius: 8,
     padding: spacing.md,
     flexDirection: 'row',
@@ -545,8 +545,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   modalInput: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
     color: colors.text,
     fontSize: 16,
@@ -559,8 +559,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: borderRadius.md,
     marginBottom: spacing.lg,
   },
   privateToggleText: {
@@ -574,8 +574,8 @@ const styles = StyleSheet.create({
   modalCancelButton: {
     flex: 1,
     padding: spacing.md,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surfaceContainer,
     alignItems: 'center',
   },
   modalCancelText: {
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
   modalCreateButton: {
     flex: 1,
     padding: spacing.md,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     backgroundColor: colors.primary,
     alignItems: 'center',
   },
@@ -618,8 +618,8 @@ const styles = StyleSheet.create({
   deptChip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: 20,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: borderRadius.full,
     marginRight: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,

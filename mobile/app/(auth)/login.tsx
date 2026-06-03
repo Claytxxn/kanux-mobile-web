@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   form:           { width: '100%' },
   inputContainer: { marginBottom: spacing.md },
   inputLabel:     { fontSize: 14, fontWeight: '500', color: colors.textSecondary, marginBottom: spacing.xs },
-  inputWrapper:   { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border },
+  inputWrapper:   { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border },
   inputIcon:      { paddingLeft: spacing.md },
   inputWithIcon:  { flex: 1, padding: spacing.md, color: colors.text, fontSize: 16 },
   eyeButton:      { padding: spacing.md },

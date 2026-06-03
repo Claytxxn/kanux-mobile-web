@@ -9,7 +9,7 @@ import {
   TextStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../../tokens/colors';
+import { colors } from '../../theme';
 
 interface GradientButtonProps extends TouchableOpacityProps {
   title: string;
@@ -40,7 +40,7 @@ export function GradientButton({
       {...props}
     >
       <LinearGradient
-        colors={colors.brand.gradient}
+        colors={['#3b82f6', '#2563eb']}
         style={[
           styles.button,
           isDisabled && styles.disabled,
@@ -63,7 +63,7 @@ export function GradientButton({
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 12,
+    borderRadius: 8,
     paddingVertical: 14,
     paddingHorizontal: 24,
     alignItems: 'center',
