@@ -8,6 +8,8 @@ import { getUserCompany, saveUserCompany } from '../../src/lib/offlineStorage';
 import { colors, spacing, borderRadius } from '../../src/theme';
 import { getWorkingHoursRestrictionMessage } from '../../src/lib/workingHours';
 import { useWebSocket } from '../../src/contexts/WebSocketContext';
+import { GradientButton } from '../../src/components/Button';
+import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 
 export default function CreateTicketScreen() {
   const { profile } = useAuth();
@@ -126,8 +128,9 @@ export default function CreateTicketScreen() {
   });
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.form}>
+    <AnimatedContainer type="slide" duration={200}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.form}>
 
         {/* Company Selector */}
         {companies.length > 1 && (
@@ -251,13 +254,14 @@ export default function CreateTicketScreen() {
         </View>
 
         {/* Submit */}
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+        <GradientButton
+          title="Abrir Chamado"
+          loading={loading}
           onPress={handleCreate}
           disabled={loading || blockedByWorkingHours}
         >
           {loading ? (
-            <ActivityIndicator color={colors.primary} />
+            <ActivityIndicator color={colors.text} />
           ) : (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="send" size={18} color={colors.text} />
@@ -268,6 +272,7 @@ export default function CreateTicketScreen() {
         {blockedByWorkingHours && <Text style={styles.emptyHint}>{workingHoursMessage}</Text>}
       </View>
     </ScrollView>
+    </AnimatedContainer>
   );
 }
 
@@ -283,7 +288,7 @@ const styles = StyleSheet.create({
   requiredNote: { color: colors.error, fontSize: 10, fontWeight: '600' },
   optionalNote: { color: colors.textMuted, fontSize: 10, fontWeight: '500' },
   input: {
-    backgroundColor: colors.surface, borderRadius: borderRadius.sm,
+    backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.sm,
     padding: spacing.md, color: colors.text, fontSize: 15,
     borderWidth: 1, borderColor: colors.border,
   },
@@ -291,14 +296,14 @@ const styles = StyleSheet.create({
   chipScroll: { marginBottom: spacing.xs },
   chip: {
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md, backgroundColor: colors.surface,
+    borderRadius: borderRadius.md, backgroundColor: colors.surfaceContainer,
     borderWidth: 1, borderColor: colors.border, marginRight: spacing.sm,
   },
   chipActive: { backgroundColor: colors.primary + '18', borderColor: colors.primary },
   chipText: { color: colors.textSecondary, fontSize: 14, fontWeight: '500' },
   chipTextActive: { color: colors.text },
   optionsList: {
-    backgroundColor: colors.surface, borderRadius: borderRadius.sm,
+    backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.sm,
     overflow: 'hidden',
   },
   optionItem: {
@@ -319,17 +324,12 @@ const styles = StyleSheet.create({
   priorityContainer: { flexDirection: 'row', gap: spacing.sm },
   priorityButton: {
     flex: 1, paddingVertical: 12, borderRadius: borderRadius.sm,
-    backgroundColor: colors.surface, alignItems: 'center',
+    backgroundColor: colors.surfaceContainer, alignItems: 'center',
     borderWidth: 1, borderColor: colors.border,
     flexDirection: 'row', justifyContent: 'center', gap: 6,
   },
   priorityText: { color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
   priorityTextActive: { color: colors.text },
-  submitButton: {
-    backgroundColor: colors.primary, borderRadius: borderRadius.sm,
-    padding: spacing.md, alignItems: 'center', marginTop: spacing.xl,
-  },
-  submitButtonDisabled: { opacity: 0.5 },
-  submitButtonText: { color: colors.text, fontSize: 16, fontWeight: '600' },
+  emptyHint: { padding: spacing.md, color: colors.textMuted, fontSize: 14, textAlign: 'center' },
 });
 

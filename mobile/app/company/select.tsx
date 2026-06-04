@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, Company } from '../../src/lib/supabase';
 import { saveUserCompany } from '../../src/lib/offlineStorage';
-import { colors, spacing } from '../../src/theme';
+import { colors, spacing, borderRadius } from '../../src/theme';
 
 export default function SelectCompanyScreen() {
   const { profile } = useAuth();
@@ -85,8 +85,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   companyItem: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',

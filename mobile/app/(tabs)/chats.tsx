@@ -4,6 +4,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, getCompanyChats, Chat, getDepartments, Department, Company } from '../../src/lib/supabase';
+import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 import {
   getOfflineChats,
   getOfflineCompanies,
@@ -180,23 +181,24 @@ function markAllAsRead(chatId: string) {
   );
 
   return (
-    <View style={styles.container}>
-      {/* Company Selector */}
-      {companies.length > 1 && (
-        <TouchableOpacity
-          style={styles.companySelector}
-          onPress={() => setShowCompanyPicker(true)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.companySelectorLeft}>
-            <Ionicons name="business" size={16} color={colors.primary} />
-            <Text style={styles.companySelectorText} numberOfLines={1}>
-              {companies.find(c => c.id === companyId)?.name || 'Selecionar empresa'}
-            </Text>
-          </View>
-          <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
-        </TouchableOpacity>
-      )}
+    <AnimatedContainer type="fade" duration={200}>
+      <View style={styles.container}>
+        {/* Company Selector */}
+        {companies.length > 1 && (
+          <TouchableOpacity
+            style={styles.companySelector}
+            onPress={() => setShowCompanyPicker(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.companySelectorLeft}>
+              <Ionicons name="business" size={16} color={colors.primary} />
+              <Text style={styles.companySelectorText} numberOfLines={1}>
+                {companies.find(c => c.id === companyId)?.name || 'Selecionar empresa'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
 
       <View style={styles.searchContainer}>
         <TextInput
@@ -374,11 +376,12 @@ function markAllAsRead(chatId: string) {
                   <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
                 )}
               </TouchableOpacity>
-            ))}
-          </View>
+        ))}
         </View>
-      </Modal>
+      </View>
+    </Modal>
     </View>
+    </AnimatedContainer>
   );
 }
 
@@ -394,7 +397,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     marginBottom: spacing.xs,
     padding: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceContainer,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -414,8 +417,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   searchInput: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
     color: colors.text,
     fontSize: 16,
@@ -427,7 +430,7 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   chatItem: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceContainer,
     borderRadius: 8,
     padding: spacing.md,
     flexDirection: 'row',
@@ -542,8 +545,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   modalInput: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
     color: colors.text,
     fontSize: 16,
@@ -556,8 +559,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: borderRadius.md,
     marginBottom: spacing.lg,
   },
   privateToggleText: {
@@ -571,8 +574,8 @@ const styles = StyleSheet.create({
   modalCancelButton: {
     flex: 1,
     padding: spacing.md,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surfaceContainer,
     alignItems: 'center',
   },
   modalCancelText: {
@@ -583,7 +586,7 @@ const styles = StyleSheet.create({
   modalCreateButton: {
     flex: 1,
     padding: spacing.md,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     backgroundColor: colors.primary,
     alignItems: 'center',
   },
@@ -615,8 +618,8 @@ const styles = StyleSheet.create({
   deptChip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: 20,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: borderRadius.full,
     marginRight: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,

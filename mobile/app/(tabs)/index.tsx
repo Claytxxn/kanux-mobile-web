@@ -15,6 +15,7 @@ import {
 import { api } from '../../src/lib/api';
 import { colors, spacing, borderRadius } from '../../src/theme';
 import KanuxLogo from '../../src/components/KanuxLogo';
+import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 import { useTheme, getWeatherColors } from '../../src/contexts/ThemeContext';
 import { getWeatherGreeting } from '../../src/lib/weather';
 
@@ -131,25 +132,27 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, isDark ? null : styles.containerLight]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? colors.surface : '#FFFFFF'} />
-      
+
       {/* Discord-style Header */}
-      <View style={[styles.header, isDark ? null : styles.headerLight]}>
-        <View style={styles.headerLeft}>
-          <KanuxLogo size="sm" showText={false} />
-          <View>
-            <Text style={[styles.headerTitle, isDark ? null : styles.textDark]}>Kanux</Text>
-            <Text style={styles.headerSubtitle}>
-              {isSuperAdmin ? 'Super Admin' : (profile?.position || 'Membro')}
-            </Text>
+      <AnimatedContainer type="fade" duration={200}>
+        <View style={[styles.header, isDark ? null : styles.headerLight]}>
+          <View style={styles.headerLeft}>
+            <KanuxLogo size="sm" showText={false} />
+            <View>
+              <Text style={[styles.headerTitle, isDark ? null : styles.textDark]}>Kanux</Text>
+              <Text style={styles.headerSubtitle}>
+                {isSuperAdmin ? 'Super Admin' : (profile?.position || 'Membro')}
+              </Text>
+            </View>
           </View>
+          <TouchableOpacity style={styles.headerAvatar} onPress={() => router.push('/(tabs)/profile')}>
+            <Text style={styles.headerAvatarText}>
+              {(profile?.display_name || user?.email || 'U').charAt(0).toUpperCase()}
+            </Text>
+            <View style={styles.onlineIndicator} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.headerAvatar} onPress={() => router.push('/(tabs)/profile')}>
-          <Text style={styles.headerAvatarText}>
-            {(profile?.display_name || user?.email || 'U').charAt(0).toUpperCase()}
-          </Text>
-          <View style={styles.onlineIndicator} />
-        </TouchableOpacity>
-      </View>
+      </AnimatedContainer>
 
       <ScrollView
         style={{ flex: 1 }}
@@ -351,7 +354,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.md, paddingTop: Platform.OS === 'ios' ? 56 : 12, paddingBottom: 12,
-    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.divider,
+    backgroundColor: colors.surfaceContainer, borderBottomWidth: 1, borderBottomColor: colors.divider,
   },
   headerLight: { backgroundColor: '#FFFFFF', borderBottomColor: '#E5E5EA' },
   textDark: { color: '#1A1A1E' },
@@ -407,7 +410,7 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   seeAll: { fontSize: 13, color: colors.primary, fontWeight: '600' },
   companyPill: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainer,
     borderRadius: borderRadius.md, paddingVertical: 8, paddingHorizontal: 12,
     marginRight: spacing.sm, gap: spacing.sm, borderWidth: 1, borderColor: colors.border,
   },
@@ -419,15 +422,15 @@ const styles = StyleSheet.create({
   companyPillTextActive: { color: colors.text },
   selectedDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary, marginLeft: 4 },
   statsRow: { flexDirection: 'row', gap: spacing.sm },
-  statCard: { flex: 1, backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md, alignItems: 'center', gap: 4, borderLeftWidth: 3 },
+  statCard: { flex: 1, backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.sm, padding: spacing.md, alignItems: 'center', gap: 4, borderLeftWidth: 3 },
   statNumber: { fontSize: 22, fontWeight: '700', color: colors.text },
   statLabel: { fontSize: 11, color: colors.textMuted },
-  channelList: { backgroundColor: colors.surface, borderRadius: borderRadius.sm, overflow: 'hidden' },
+  channelList: { backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.sm, overflow: 'hidden' },
   channelItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: spacing.md, gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider },
   channelText: { flex: 1, fontSize: 15, color: colors.textSecondary, fontWeight: '500' },
   adminBadge: { backgroundColor: colors.error + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
   adminBadgeText: { fontSize: 10, color: colors.error, fontWeight: '700' },
-  ticketItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md, marginBottom: spacing.xs, gap: spacing.sm },
+  ticketItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.sm, padding: spacing.md, marginBottom: spacing.xs, gap: spacing.sm },
   ticketDot: { width: 8, height: 8, borderRadius: 4 },
   ticketTitle: { fontSize: 15, color: colors.text, fontWeight: '500' },
   ticketMeta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },

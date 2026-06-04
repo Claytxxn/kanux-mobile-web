@@ -16,6 +16,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 
 // ── Auxiliares de separador de data ─────────────────────────────────────────
 function getDateLabel(dateStr: string): string {
@@ -472,13 +474,14 @@ export default function ChatScreen() {
   const listItems = useMemo(() => buildListItems(sortedMessages, profile?.id), [sortedMessages, profile?.id]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : (StatusBar.currentHeight ?? 0)}
-    >
+    <AnimatedContainer type="fade" duration={200}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : (StatusBar.currentHeight ?? 0)}
+      >
         {/* Barra de informações do chat */}
-      <View style={styles.chatHeader}>
+        <View style={styles.chatHeader}>
         <View style={styles.chatHeaderInfo}>
           <Text style={styles.chatHeaderName}>{chatInfo?.name || 'Chat'}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -620,17 +623,27 @@ export default function ChatScreen() {
               multiline
               maxLength={1000}
             />
-            {sending ? (
-              <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: spacing.sm }} />
-            ) : (
-              <TouchableOpacity
-                style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
-                onPress={handleSend}
-                disabled={!newMessage.trim()}
-              >
-                <Ionicons name="send" size={18} color="#fff" />
-              </TouchableOpacity>
-            )}
+{sending ? (
+          <ActivityIndicator size="small" color="#FFFFFF" style={{ marginLeft: spacing.sm }} />
+        ) : (
+          <TouchableOpacity
+            onPress={handleSend}
+            disabled={!newMessage.trim()}
+            activeOpacity={0.7}
+          >
+            <LinearGradient
+              colors={['#8B5CF6', '#6D28D9']}
+              style={[
+                styles.sendButton,
+                !newMessage.trim() && styles.sendButtonDisabled,
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name="send" size={18} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
           </>
         ) : (
           <View style={styles.blockedInput}>
@@ -719,6 +732,7 @@ export default function ChatScreen() {
         </View>
       </Modal>
     </KeyboardAvoidingView>
+    </AnimatedContainer>
   );
 }
 
@@ -776,7 +790,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceContainer,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -812,7 +826,7 @@ const styles = StyleSheet.create({
   messageBubble: {
     maxWidth: '80%',
     padding: spacing.sm,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     marginBottom: spacing.sm,
   },
   myMessage: {
@@ -821,7 +835,7 @@ const styles = StyleSheet.create({
   },
   otherMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceContainerLow,
   },
   messageText: {
     color: colors.text,
@@ -858,7 +872,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     padding: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceContainer,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     alignItems: 'flex-end',
@@ -866,7 +880,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     backgroundColor: colors.background,
-    borderRadius: 20,
+    borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     color: colors.text,
@@ -941,13 +955,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.sm,
     marginBottom: spacing.xs,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
     backgroundColor: colors.background,
   },
   memberAvatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -991,13 +1005,13 @@ const styles = StyleSheet.create({
   msgAvatar: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: borderRadius.full,
     marginRight: 6,
   },
   msgAvatarPlaceholder: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.primary + '40',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1029,7 +1043,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: borderRadius.full,
     overflow: 'hidden',
   },
   myMessageText: {
@@ -1038,7 +1052,7 @@ const styles = StyleSheet.create({
   onlineDot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: borderRadius.sm,
   },
   onlineDotActive: {
     backgroundColor: '#22C55E',
@@ -1049,13 +1063,13 @@ const styles = StyleSheet.create({
   memberAvatarImg: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: borderRadius.full,
   },
   // ── Estilos de mídia ──
   mediaImage: {
     width: 200,
     height: 150,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
     marginBottom: 4,
   },
   documentRow: {
@@ -1081,13 +1095,12 @@ const styles = StyleSheet.create({
   },
   mediaButtonRecording: {
     backgroundColor: colors.error + '22',
-    borderRadius: 20,
+    borderRadius: borderRadius.full,
   },
   sendButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 20,
-    width: 36,
-    height: 36,
+    borderRadius: borderRadius.full,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: spacing.xs,

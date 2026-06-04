@@ -7,9 +7,10 @@ import { useWebSocket } from '../../src/contexts/WebSocketContext';
 import { Ticket, TicketComment, getTicketComments, supabase } from '../../src/lib/supabase';
 import { api } from '../../src/lib/api';
 import { ENV } from '../../src/lib/env';
-import { colors, spacing } from '../../src/theme';
+import { colors, spacing, borderRadius } from '../../src/theme';
 import { getWorkingHoursRestrictionMessage } from '../../src/lib/workingHours';
 import * as ImagePicker from 'expo-image-picker';
+import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 
 const TICKET_IMAGE_PREFIX = '[image]:';
 
@@ -259,12 +260,13 @@ export default function TicketScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : (StatusBar.currentHeight ?? 0)}
-    >
-      {ticket && (
+    <AnimatedContainer type="fade" duration={200}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : (StatusBar.currentHeight ?? 0)}
+      >
+        {ticket && (
         <>
           {/* Header do Ticket */}
           <TouchableOpacity style={styles.ticketHeader} onPress={() => setShowInfo(!showInfo)} activeOpacity={0.7}>
@@ -422,7 +424,8 @@ export default function TicketScreen() {
         name="Foto do ticket"
         onClose={() => setPreviewImageUrl(null)}
       />
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </AnimatedContainer>
   );
 }
 
@@ -475,7 +478,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceContainer,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -500,12 +503,12 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: 4,
+    borderRadius: borderRadius.small,
   },
   priorityBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: 4,
+    borderRadius: borderRadius.small,
   },
   badgeText: {
     fontSize: 10,
@@ -514,7 +517,7 @@ const styles = StyleSheet.create({
   },
   // Painel de info
   infoPanel: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceContainerLow,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     padding: spacing.md,
@@ -542,7 +545,7 @@ const styles = StyleSheet.create({
   actionChip: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: borderRadius.small,
   },
   actionChipActive: {
     borderWidth: 2,
@@ -588,7 +591,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 30,
     height: 30,
-    borderRadius: 15,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -602,7 +605,7 @@ const styles = StyleSheet.create({
   messageBubble: {
     maxWidth: '75%',
     padding: spacing.sm,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
   },
   myMessage: {
     alignSelf: 'flex-end',
@@ -611,7 +614,7 @@ const styles = StyleSheet.create({
   },
   otherMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceContainerLow,
     borderBottomLeftRadius: 4,
   },
   authorName: {
@@ -627,7 +630,7 @@ const styles = StyleSheet.create({
   commentImage: {
     width: 220,
     height: 220,
-    borderRadius: 10,
+    borderRadius: borderRadius.md,
     backgroundColor: colors.background,
   },
   messageTime: {
@@ -640,7 +643,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     padding: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceContainer,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     alignItems: 'flex-end',
@@ -648,7 +651,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     backgroundColor: colors.background,
-    borderRadius: 20,
+    borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     color: colors.text,
@@ -658,7 +661,7 @@ const styles = StyleSheet.create({
   mediaButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
@@ -669,7 +672,7 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     backgroundColor: colors.primary,
-    borderRadius: 20,
+    borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginLeft: spacing.sm,

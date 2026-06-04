@@ -109,3 +109,6 @@ android-sdk/
 .yarn/cache/
 .nyc_output
 web/supabase/.temp/
+mobile-improvements.md
+FASE0-CONCLUIDA.md
+design-kanuxpro.md

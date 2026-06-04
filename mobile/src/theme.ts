@@ -1,7 +1,7 @@
 // Theme colors for the app - Discord-inspired Dark Theme
 export const colors = {
   // Primary colors - Discord Blurple
-  primary: '#3b82f6',
+  primary: '#5865F2',
   primaryDark: '#4752C4',
   primaryLight: '#7289DA',
   primaryMuted: '#9BA4D4',
@@ -11,10 +11,6 @@ export const colors = {
   backgroundLight: '#2B2D31',
   surface: '#313338',
   surfaceLight: '#383A40',
-  // Container backgrounds for cards/modals
-  surfaceContainer: '#313338',
-  // Higher-contrast container for skeletons/placeholders
-  surfaceContainerHigh: '#383A40',
 
   // Text colors
   text: '#F2F3F5',
@@ -33,10 +29,10 @@ export const colors = {
   priorityLow: '#23A559',
 
   // Status ticket colors
-  statusOpen: '#3b82f6',
+  statusOpen: '#5865F2',
   statusPending: '#F0B232',
   statusResolved: '#23A559',
-  statusClosed: '#8e9099',
+  statusClosed: '#80848E',
 
   // Brand colors
   brand: '#5865F2',
@@ -48,41 +44,70 @@ export const colors = {
   borderLight: '#4E5058',
   divider: '#35373C',
   overlay: 'rgba(0, 0, 0, 0.85)',
-
-  // Discord-specific
+  
+  // Discord-specific (legacy)
   mention: '#5865F220',
-  channelIcon: '#80848E',
-  online: '#23A559',
-  idle: '#F0B232',
-  dnd: '#ED4245',
-  offline: '#80848E',
-
-  // Legacy compatibility
+  channelIcon: tokens.textMuted,
+  online: tokens.success,
+  idle: tokens.warning,
+  dnd: tokens.error,
+  offline: tokens.textMuted,
+  
+  // Basic
   white: '#ffffff',
   black: '#000000',
-  gray: '#80848E',
-  lightGray: '#B5BAC1',
+  gray: tokens.textMuted,
+  lightGray: tokens.textSecondary,
 };
 
-export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 48,
+// =============================================================================
+// SPACING - Semantic Naming with Legacy Compatibility
+// =============================================================================
+
+export const spacing: ThemeSpacing = {
+  // Legacy compatibility
+  xs: spacingTokens.xs,
+  sm: spacingTokens.sm,
+  md: spacingTokens.md,
+  lg: spacingTokens.lg,
+  xl: spacingTokens.xl,
+  xxl: spacingTokens.xxl,
+  
+  // New semantic naming
+  containerPadding: spacingTokens.containerPadding,
+  stackGapLg: spacingTokens.stackGapLg,
+  stackGapMd: spacingTokens.stackGapMd,
+  stackGapSm: spacingTokens.stackGapSm,
+  inlineGapMd: spacingTokens.inlineGapMd,
+  inlineGapSm: spacingTokens.inlineGapSm,
 };
 
-export const borderRadius = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  full: 9999,
+// =============================================================================
+// BORDER RADIUS - Semantic Naming with Legacy Compatibility
+// =============================================================================
+
+export const borderRadius: ThemeBorderRadius = {
+  // Legacy compatibility
+  xs: roundness.xs,
+  sm: roundness.sm,
+  md: roundness.medium, // Updated: 12 → 8
+  lg: roundness.large,
+  xl: roundness.xl,
+  full: roundness.full,
+  
+  // New semantic naming
+  none: roundness.none,
+  small: roundness.small,
+  medium: roundness.medium,
+  large: roundness.large,
 };
 
-export const fontSize = {
+// =============================================================================
+// FONT SIZE - With Typography Scale
+// =============================================================================
+
+export const fontSize: ThemeFontSize = {
+  // Legacy compatibility
   xs: 12,
   sm: 14,
   md: 16,
@@ -90,17 +115,41 @@ export const fontSize = {
   xl: 20,
   xxl: 24,
   xxxl: 32,
+  
+  // Typography scale from Midnight SaaS
+  displayLg: typographyTokens.scale.displayLg,
+  displayMd: typographyTokens.scale.displayMd,
+  displaySm: typographyTokens.scale.displaySm,
+  headlineLg: typographyTokens.scale.headlineLg,
+  headlineMd: typographyTokens.scale.headlineMd,
+  headlineSm: typographyTokens.scale.headlineSm,
+  titleLg: typographyTokens.scale.titleLg,
+  titleMd: typographyTokens.scale.titleMd,
+  titleSm: typographyTokens.scale.titleSm,
+  labelLg: typographyTokens.scale.labelLg,
+  labelMd: typographyTokens.scale.labelMd,
+  labelSm: typographyTokens.scale.labelSm,
+  bodyLg: typographyTokens.scale.bodyLg,
+  bodyMd: typographyTokens.scale.bodyMd,
+  bodySm: typographyTokens.scale.bodySm,
 };
 
-export const fontWeight = {
-  normal: '400' as const,
-  medium: '500' as const,
-  semibold: '600' as const,
-  bold: '700' as const,
+// =============================================================================
+// FONT WEIGHT
+// =============================================================================
+
+export const fontWeight: ThemeFontWeight = {
+  normal: '400',
+  medium: '500',
+  semibold: '600',
+  bold: '700',
 };
 
-// Shadow styles for cards
-export const shadows = {
+// =============================================================================
+// SHADOWS
+// =============================================================================
+
+export const shadows: ThemeShadows = {
   card: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -109,17 +158,39 @@ export const shadows = {
     elevation: 4,
   },
   floating: {
-    shadowColor: '#5865F2',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 10,
   },
   brand: {
-    shadowColor: '#5865F2',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 8,
   },
+};
+
+// =============================================================================
+// TYPOGRAPHY
+// =============================================================================
+
+export const typography = {
+  family: 'Inter, system-ui, sans-serif',
+};
+
+// =============================================================================
+// DEFAULT THEME EXPORT
+// =============================================================================
+
+export const theme: Theme = {
+  colors,
+  spacing,
+  borderRadius,
+  fontSize,
+  fontWeight,
+  shadows,
+  typography,
 };

@@ -1,6 +1,6 @@
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StatusBar,
+  Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -9,6 +9,8 @@ import { supabase } from '../../src/lib/supabase';
 import { api, initApi, setAuthToken } from '../../src/lib/api';
 import { colors, spacing, borderRadius, shadows } from '../../src/theme';
 import KanuxLogo from '../../src/components/KanuxLogo';
+import { GradientButton } from '../../src/components/Button';
+import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 
 export default function LoginScreen() {
   const [email, setEmail]             = useState('');
@@ -44,12 +46,13 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : (StatusBar.currentHeight ?? 0)}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <KanuxLogo size="lg" />
-          <Text style={styles.subtitle}>{isSignUp ? 'Crie sua conta' : 'Bem-vindo de volta'}</Text>
-        </View>
+    <AnimatedContainer type="fade" duration={200}>
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : (StatusBar.currentHeight ?? 0)}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <KanuxLogo size="lg" />
+            <Text style={styles.subtitle}>{isSignUp ? 'Crie sua conta' : 'Bem-vindo de volta'}</Text>
+          </View>
         <View style={styles.form}>
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email</Text>
@@ -82,7 +85,7 @@ export default function LoginScreen() {
           )}
           <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleAuth} disabled={loading} activeOpacity={0.8}>
-            {loading ? <ActivityIndicator color={colors.primary} />
+            {loading ? <ActivityIndicator color={colors.text} />
               : (
                 <View style={styles.buttonContent}>
                   <Ionicons name={isSignUp ? 'person-add' : 'log-in'} size={20} color={colors.text} />
@@ -94,12 +97,14 @@ export default function LoginScreen() {
             <Text style={styles.linkText}>
               {isSignUp ? 'Já tem uma conta? Entre' : 'Não tem conta? Cadastre-se'}
             </Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.footer}>© 2025 Kanux - Help Desk</Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
+      </TouchableOpacity>
+      </View>
+    </View>
+    <Text style={styles.footer}>© 2025 Kanux - Help Desk</Text>
+    </ScrollView>
+  </KeyboardAvoidingView>
+</AnimatedContainer>
+);
 }
 
 const styles = StyleSheet.create({
@@ -110,15 +115,11 @@ const styles = StyleSheet.create({
   form:           { width: '100%' },
   inputContainer: { marginBottom: spacing.md },
   inputLabel:     { fontSize: 14, fontWeight: '500', color: colors.textSecondary, marginBottom: spacing.xs },
-  inputWrapper:   { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border },
+  inputWrapper:   { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border },
   inputIcon:      { paddingLeft: spacing.md },
   inputWithIcon:  { flex: 1, padding: spacing.md, color: colors.text, fontSize: 16 },
   eyeButton:      { padding: spacing.md },
-  button:         { backgroundColor: colors.primary, borderRadius: borderRadius.md, padding: spacing.md, alignItems: 'center', marginTop: spacing.lg, ...shadows.brand },
-  buttonDisabled: { opacity: 0.6 },
-  buttonContent:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  buttonText:     { color: colors.text, fontSize: 18, fontWeight: '600' },
-  linkButton:     { marginTop: spacing.lg, alignItems: 'center', padding: spacing.sm },
+  linkButton: { alignItems: 'center', padding: spacing.sm },
   linkText:       { color: colors.primary, fontSize: 15, fontWeight: '500' },
   footer:         { textAlign: 'center', color: colors.textMuted, fontSize: 12, marginTop: spacing.xxl },
 });
