@@ -4,15 +4,13 @@
  */
 
 export { colors } from './colors';
+export { colors as designColors, spacing, roundness, typography } from './design-tokens';
 
-// Spacing tokens (future)
-// export { spacing } from './spacing';
-
-// Typography tokens (future)
-// export { typography } from './typography';
-
-// Radius tokens (future)
-// export { radius } from './radius';
-
-// Shadows tokens (future)
-// export { shadows } from './shadows';
+// Compatibility export
+export const tokens = {
+  textMuted: '#80848E',
+  success: '#23A559',
+  warning: '#F0B232',
+  error: '#ED4245',
+  textSecondary: '#B5BAC1',
+};

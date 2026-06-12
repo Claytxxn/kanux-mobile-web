@@ -103,6 +103,17 @@ export default function RootLayout(): JSX.Element {
     }
   }, [fontsLoaded, fontsLoadedError]);
 
+  useEffect(() => {
+    // Timeout de segurança para evitar tela cinza eterna
+    const timer = setTimeout(() => {
+      if (!fontsLoaded) {
+        console.warn('⚠️ Font loading timeout, proceeding anyway');
+        setFontsLoaded(true);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [fontsLoaded]);
+
   // Mostrar loading enquanto fontes carregam
   if (!fontsLoaded) {
     return <LoadingScreen />;

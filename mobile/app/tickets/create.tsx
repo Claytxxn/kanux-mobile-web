@@ -268,7 +268,7 @@ export default function CreateTicketScreen() {
               <Text style={styles.submitButtonText}>Abrir Chamado</Text>
             </View>
           )}
-        </TouchableOpacity>
+        </GradientButton>
         {blockedByWorkingHours && <Text style={styles.emptyHint}>{workingHoursMessage}</Text>}
       </View>
     </ScrollView>

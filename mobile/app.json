@@ -3,6 +3,7 @@
     "name": "Kanux",
     "slug": "kanux-mobile",
     "version": "1.0.0.5",
+    "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "kanux",

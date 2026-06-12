@@ -1,6 +1,7 @@
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -97,14 +98,13 @@ export default function LoginScreen() {
             <Text style={styles.linkText}>
               {isSignUp ? 'Já tem uma conta? Entre' : 'Não tem conta? Cadastre-se'}
             </Text>
-      </TouchableOpacity>
-      </View>
-    </View>
-    <Text style={styles.footer}>© 2025 Kanux - Help Desk</Text>
-    </ScrollView>
-  </KeyboardAvoidingView>
-</AnimatedContainer>
-);
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.footer}>© 2025 Kanux - Help Desk</Text>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  </AnimatedContainer>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -119,6 +119,10 @@ const styles = StyleSheet.create({
   inputIcon:      { paddingLeft: spacing.md },
   inputWithIcon:  { flex: 1, padding: spacing.md, color: colors.text, fontSize: 16 },
   eyeButton:      { padding: spacing.md },
+  button:         { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, alignItems: 'center', justifyContent: 'center', marginTop: spacing.lg },
+  buttonDisabled: { opacity: 0.5 },
+  buttonContent:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  buttonText:     { color: colors.text, fontSize: 16, fontWeight: '600' },
   linkButton: { alignItems: 'center', padding: spacing.sm },
   linkText:       { color: colors.primary, fontSize: 15, fontWeight: '500' },
   footer:         { textAlign: 'center', color: colors.textMuted, fontSize: 12, marginTop: spacing.xxl },

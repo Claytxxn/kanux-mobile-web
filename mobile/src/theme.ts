@@ -1,4 +1,82 @@
 // Theme colors for the app - Discord-inspired Dark Theme
+import { spacing as spacingTokens, roundness, typography as typographyTokens } from './tokens/design-tokens';
+import { tokens } from './tokens';
+
+interface ThemeSpacing {
+  containerPadding: number;
+  stackGapLg: number;
+  stackGapMd: number;
+  stackGapSm: number;
+  inlineGapMd: number;
+  inlineGapSm: number;
+  xs: number;
+  sm: number;
+  md: number;
+  lg: number;
+  xl: number;
+  xxl: number;
+}
+
+interface ThemeBorderRadius {
+  none: number;
+  small: number;
+  medium: number;
+  large: number;
+  full: number;
+  xs: number;
+  sm: number;
+  lg: number;
+  xl: number;
+}
+
+interface ThemeFontSize {
+  xs: number;
+  sm: number;
+  md: number;
+  lg: number;
+  xl: number;
+  xxl: number;
+  xxxl: number;
+  displayLg: number;
+  displayMd: number;
+  displaySm: number;
+  headlineLg: number;
+  headlineMd: number;
+  headlineSm: number;
+  titleLg: number;
+  titleMd: number;
+  titleSm: number;
+  labelLg: number;
+  labelMd: number;
+  labelSm: number;
+  bodyLg: number;
+  bodyMd: number;
+  bodySm: number;
+}
+
+interface ThemeFontWeight {
+  normal: string;
+  medium: string;
+  semibold: string;
+  bold: string;
+}
+
+interface ThemeShadows {
+  card: any;
+  floating: any;
+  brand: any;
+}
+
+interface Theme {
+  colors: any;
+  spacing: ThemeSpacing;
+  borderRadius: ThemeBorderRadius;
+  fontSize: ThemeFontSize;
+  fontWeight: ThemeFontWeight;
+  shadows: ThemeShadows;
+  typography: any;
+}
+
 export const colors = {
   // Primary colors - Discord Blurple
   primary: '#5865F2',
@@ -11,6 +89,11 @@ export const colors = {
   backgroundLight: '#2B2D31',
   surface: '#313338',
   surfaceLight: '#383A40',
+  surfaceContainer: '#2B2D31',
+  surfaceContainerLow: '#1c1b1b',
+  surfaceContainerLowest: '#0e0e0e',
+  surfaceContainerHigh: '#383A40',
+  surfaceContainerHighest: '#3F4147',
 
   // Text colors
   text: '#F2F3F5',
