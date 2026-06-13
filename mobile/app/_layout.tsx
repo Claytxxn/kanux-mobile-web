@@ -1,6 +1,6 @@
 import { Stack, useRouter, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, ReactElement } from 'react';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { SyncProvider } from '../src/contexts/SyncContext';
 import { WebSocketProvider } from '../src/contexts/WebSocketContext';
@@ -14,7 +14,7 @@ import { useFonts } from 'expo-font';
 /**
  * LoadingScreen - Exibida enquanto carrega fontes e dados iniciais
  */
-function LoadingScreen(): JSX.Element {
+function LoadingScreen(): ReactElement {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
       <Image
@@ -31,33 +31,33 @@ function LoadingScreen(): JSX.Element {
 /**
  * AuthGate - Gerencia navegação baseada no estado de autenticação
  */
-function AuthGate(): JSX.Element | null {
+function AuthGate(): ReactElement | null {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const hasNavigated = useRef(false);
   
   useEffect(() => {
-    if (loading) return;
+    if (loading || hasNavigated.current) return;
     
-    // Já logado + perfil/empresa OK → tabs (apenas se estiver em tela de auth)
     if (user && profile) {
-      if (pathname.includes('login') || pathname.includes('company/select')) {
-        router.replace('/(tabs)');
-      }
+      hasNavigated.current = true;
+      router.replace('/(tabs)');
       return;
     }
     
-    // Logado mas sem perfil/empresa → selecionar empresa
     if (user && !profile) {
-      if (!pathname.includes('company/select')) router.replace('/company/select');
+      hasNavigated.current = true;
+      router.replace('/company/select');
       return;
     }
     
-    // Não logado → login
     if (!user) {
-      if (!pathname.includes('login')) router.replace('/(auth)/login');
+      hasNavigated.current = true;
+      router.replace('/(auth)/login');
+      return;
     }
-  }, [user, profile, loading, pathname]);
+  }, [user, profile, loading, pathname, router]);
 
   if (loading) {
     return <LoadingScreen />;
@@ -69,7 +69,7 @@ function AuthGate(): JSX.Element | null {
 /**
  * NotificationSetup - Componente que ativa o hook de notificações dentro dos providers de auth
  */
-function NotificationSetup(): JSX.Element {
+function NotificationSetup(): ReactElement {
   const pathname = usePathname();
   const activeChatId = pathname.startsWith('/chat/') ? pathname.replace('/chat/', '') : undefined;
   useNotifications(activeChatId);
@@ -85,7 +85,7 @@ function NotificationSetup(): JSX.Element {
  * - Navegação Stack
  * - Gate de autenticação
  */
-export default function RootLayout(): JSX.Element {
+export default function RootLayout(): ReactElement {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   // Carregar fonte Inter do Google Fonts (24pt - tamanho ideal para mobile UI)

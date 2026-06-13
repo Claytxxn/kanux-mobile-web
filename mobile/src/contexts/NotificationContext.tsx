@@ -177,7 +177,8 @@ export function useNotifications(activeChatId?: string) {
         try { fn(); } catch {}
       });
     };
-  }, [profile?.id, subscribeChatMessages]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
 }
 
 async function requestNotificationPermission(): Promise<string | null> {

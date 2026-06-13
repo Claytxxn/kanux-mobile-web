@@ -1,61 +1,12 @@
-import {
-  View,
-  Text,
-  Image,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
-import { colors } from '../src/theme';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function IndexScreen() {
-  return (
-    <View style={styles.container}>
-      {/* Logo Kanux */}
-      <Image
-        source={require('../assets/icon.png')}
-        style={styles.logo}
-        resizeMode="contain"
-      />
-      <Text style={styles.title}>Kanux</Text>
-      <Text style={styles.subtitle}>HELP DESK</Text>
-      
-      {/* Indicador de carregamento */}
-      <ActivityIndicator
-        size="small"
-        color={colors.primary}
-        style={styles.loader}
-      />
-    </View>
-  );
+  const router = useRouter();
+  
+  useEffect(() => {
+    router.replace('/(tabs)');
+  }, [router]);
+  
+  return null;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#09090B',
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    borderRadius: 26,
-    marginBottom: 16,
-  },
-  title: {
-    color: '#FAFAFA',
-    fontSize: 36,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  subtitle: {
-    color: '#A78BFA',
-    fontSize: 14,
-    fontWeight: '500',
-    letterSpacing: 4,
-    marginTop: 4,
-  },
-  loader: {
-    marginTop: 40,
-  },
-});

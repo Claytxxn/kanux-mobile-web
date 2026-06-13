@@ -44,7 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile]   = useState<Profile | null>(null);
   const [loading, setLoading]   = useState(true);
   const [isOnline, setIsOnline] = useState(true);
-  const retryTimer = useRef<any>(null);
   const userRef = useRef<User | null>(null);
   const previousOnlineRef = useRef<boolean | null>(null);
   const hadOfflineSessionRef = useRef(false);
@@ -87,46 +86,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  /** Refresh profile from network in background — never blocks navigation. */
-  const refreshProfileFromNetwork = async (sessionUser: User, attempt = 0) => {
+  /** Load profile — cache first, then network if needed. */
+  const loadProfile = async (sessionUser: User) => {
+    // 1) Tenta cache offline primeiro
+    const cached = await getOfflineProfile();
+    if (cached) {
+      setProfile(cached);
+      return;
+    }
+    // 2) Se não tem cache, busca da rede
     try {
       const profileData = await getUserProfile(sessionUser.id);
       if (profileData) {
         setProfile(profileData);
         saveProfileOffline(profileData).catch(() => {});
-        try {
-          const companies = await getUserCompanies();
-          if (companies.length > 0) await saveUserCompany(companies[0].id);
-        } catch { /* non-fatal */ }
-        return;
       }
-    } catch { /* network error or timeout */ }
-
-    // Retry with backoff up to 5 attempts
-    if (attempt < 5) {
-      const delay = Math.min((attempt + 1) * 10000, 30000);
-      console.warn(`⚠️ Profile unavailable, retry in ${delay / 1000}s (attempt ${attempt + 1}/5)`);
-      retryTimer.current = setTimeout(() => refreshProfileFromNetwork(sessionUser, attempt + 1), delay);
+    } catch (error) {
+      console.warn('⚠️ Erro ao carregar perfil da rede:', error);
     }
-  };
-
-  /** Load profile — cache first (fast), then network in background. */
-  const loadProfile = async (sessionUser: User, attempt = 0) => {
-    // 1) Serve do cache offline imediatamente
-    const cached = await getOfflineProfile();
-    if (cached) {
-      console.log('💾 Perfil do cache — entrar imediato');
-      setProfile(cached);
-    }
-    // 2) Busca da rede em background (atualiza sem bloquear)
-    refreshProfileFromNetwork(sessionUser, attempt).catch(() => {});
   };
 
   const bootstrapSession = async (sessionUser: User) => {
-    await loadProfile(sessionUser);
-    preloadAfterLogin().catch((error) => {
-      console.error('Error scheduling app preload after login:', error);
-    });
+    try {
+      // Carrega perfil primeiro (prioridade máxima)
+      await loadProfile(sessionUser);
+      
+      // Preload em background (não bloqueia o loading)
+      preloadAfterLogin().catch((error) => {
+        console.error('Error preloading app data:', error);
+      });
+    } catch (error) {
+      console.error('[AuthContext] bootstrapSession error:', error);
+    }
   };
 
   const refreshProfile = async () => {
@@ -135,7 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    if (retryTimer.current) clearTimeout(retryTimer.current);
     await supabase.auth.signOut();
     setAuthToken(null);
     setSession(null);
@@ -188,14 +178,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.access_token) setAuthToken(session.access_token);
 
       if (session?.user) {
-        bootstrapSession(session.user).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
+        bootstrapSession(session.user);
       }
+      // Loading termina no finally do bootstrapSession ou imediatamente se não tiver user
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (retryTimer.current) clearTimeout(retryTimer.current);
       setSession(session);
       setUser(session?.user ?? null);
       userRef.current = session?.user ?? null;
@@ -211,7 +200,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
-      if (retryTimer.current) clearTimeout(retryTimer.current);
       subscription.unsubscribe();
       unsubscribeNet();
     };

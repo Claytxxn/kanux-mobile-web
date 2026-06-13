@@ -102,7 +102,8 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!user || !profile) { setLoading(false); return; }
     loadData();
-  }, [user, profile?.is_super_admin, isOnline]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, profile?.id, isOnline]);
 
   function onRefresh() {
     if (!user || !profile) return;

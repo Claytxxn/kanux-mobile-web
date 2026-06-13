@@ -57,6 +57,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const justSynced = lastSync && (Date.now() - lastSync.getTime()) < 60_000;
       if (!justSynced) await syncNow();
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline, profile?.id]);
 
   const warmupOfflineData = async () => {

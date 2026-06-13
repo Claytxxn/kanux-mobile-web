@@ -24,7 +24,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 
   if (moduleName === './src/error-overlay') {
     return {
-      filePath: path.join(__dirname, 'node_modules', '@expo', 'metro-runtime', 'src', 'error-overlay', 'index.ts'),
+      filePath: path.join(__dirname, 'node_modules', '@expo', 'metro-runtime', 'src', 'error-overlay', 'index.tsx'),
       type: 'sourceFile',
     };
   }
@@ -32,6 +32,20 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'react-native-safe-area-context') {
     return {
       filePath: path.join(__dirname, 'node_modules', 'react-native-safe-area-context', 'lib', 'commonjs', 'index.js'),
+      type: 'sourceFile',
+    };
+  }
+
+  if (moduleName === '@react-native-async-storage/async-storage') {
+    return {
+      filePath: path.join(__dirname, 'node_modules', '@react-native-async-storage', 'async-storage', 'lib', 'commonjs', 'index.js'),
+      type: 'sourceFile',
+    };
+  }
+
+  if (moduleName === '@react-native-community/netinfo') {
+    return {
+      filePath: path.join(__dirname, 'node_modules', '@react-native-community', 'netinfo', 'lib', 'commonjs', 'index.js'),
       type: 'sourceFile',
     };
   }
