@@ -3,6 +3,15 @@ import 'react-native-url-polyfill/auto';
 import { ENV } from './env';
 import { api } from './api';
 
+// Debug log to verify ENV is loaded correctly
+console.log('[Supabase] ENV loaded:', {
+  hasUrl: !!ENV.SUPABASE_URL,
+  hasKey: !!ENV.SUPABASE_ANON_KEY,
+  urlLength: ENV.SUPABASE_URL?.length,
+  keyLength: ENV.SUPABASE_ANON_KEY?.length,
+  url: ENV.SUPABASE_URL?.substring(0, 30) + '...'
+});
+
 // Create Supabase client with React Native compatibility
 export const supabase = createClient(
   ENV.SUPABASE_URL,

@@ -15,7 +15,6 @@ import {
 import { api } from '../../src/lib/api';
 import { colors, spacing, borderRadius } from '../../src/theme';
 import KanuxLogo from '../../src/components/KanuxLogo';
-import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 import { useTheme, getWeatherColors } from '../../src/contexts/ThemeContext';
 import { getWeatherGreeting } from '../../src/lib/weather';
 
@@ -135,25 +134,23 @@ export default function HomeScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? colors.surface : '#FFFFFF'} />
 
       {/* Discord-style Header */}
-      <AnimatedContainer type="fade" duration={200}>
-        <View style={[styles.header, isDark ? null : styles.headerLight]}>
-          <View style={styles.headerLeft}>
-            <KanuxLogo size="sm" showText={false} />
-            <View>
-              <Text style={[styles.headerTitle, isDark ? null : styles.textDark]}>Kanux</Text>
-              <Text style={styles.headerSubtitle}>
-                {isSuperAdmin ? 'Super Admin' : (profile?.position || 'Membro')}
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.headerAvatar} onPress={() => router.push('/(tabs)/profile')}>
-            <Text style={styles.headerAvatarText}>
-              {(profile?.display_name || user?.email || 'U').charAt(0).toUpperCase()}
+      <View style={[styles.header, isDark ? null : styles.headerLight]}>
+        <View style={styles.headerLeft}>
+          <KanuxLogo size="sm" showText={false} />
+          <View>
+            <Text style={[styles.headerTitle, isDark ? null : styles.textDark]}>Kanux</Text>
+            <Text style={styles.headerSubtitle}>
+              {isSuperAdmin ? 'Super Admin' : (profile?.position || 'Membro')}
             </Text>
-            <View style={styles.onlineIndicator} />
-          </TouchableOpacity>
+          </View>
         </View>
-      </AnimatedContainer>
+        <TouchableOpacity style={styles.headerAvatar} onPress={() => router.push('/(tabs)/profile')}>
+          <Text style={styles.headerAvatarText}>
+            {(profile?.display_name || user?.email || 'U').charAt(0).toUpperCase()}
+          </Text>
+          <View style={styles.onlineIndicator} />
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         style={{ flex: 1 }}

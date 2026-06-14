@@ -35,8 +35,7 @@
           "androidMode": "default",
           "androidCollapsedTitle": "Mensagens"
         }
-      ],
-      "expo-font"
+      ]
     ],
     "experiments": {
       "typedRoutes": true

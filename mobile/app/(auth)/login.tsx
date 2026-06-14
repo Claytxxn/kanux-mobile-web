@@ -8,12 +8,13 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../src/lib/supabase';
 import { api, initApi, setAuthToken } from '../../src/lib/api';
-import { colors, spacing, borderRadius, shadows } from '../../src/theme';
+import { colors, spacing, borderRadius } from '../../src/theme';
 import KanuxLogo from '../../src/components/KanuxLogo';
-import { GradientButton } from '../../src/components/Button';
-import { AnimatedContainer } from '../../src/components/AnimatedContainer';
 
 export default function LoginScreen() {
+  // Log 6: No topo do corpo da função
+  console.log('[LoginScreen] TOP OF FUNCTION - Rendering...');
+  
   const [email, setEmail]             = useState('');
   const [password, setPassword]       = useState('');
   const [companySlug, setCompanySlug] = useState('');
@@ -22,11 +23,23 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  useEffect(() => { initApi().catch(() => {}); }, []);
+  useEffect(() => { 
+    console.log('[LoginScreen] useEffect - Mounted');
+    // Aguardar inicialização da API antes de qualquer chamada
+    (async () => {
+      try {
+        await initApi();
+        console.log('[LoginScreen] API initialized successfully');
+      } catch (e: any) {
+        console.error('[LoginScreen] API init failed:', e?.message || e);
+      }
+    })();
+  }, []);
 
   async function handleAuth() {
     if (!email || !password) { Alert.alert('Erro', 'Preencha todos os campos'); return; }
     if (!isSignUp && !companySlug) { Alert.alert('Erro', 'Informe o número da empresa'); return; }
+    
     setLoading(true);
     try {
       if (isSignUp) {
@@ -34,26 +47,69 @@ export default function LoginScreen() {
         if (error) throw error;
         Alert.alert('Sucesso', 'Conta criada! Verifique seu email.');
       } else {
+        console.log('[LoginScreen] Verifying company:', companySlug);
         const result = await api.verifyCompany(companySlug.trim());
-        if (!result.success) { Alert.alert('Erro', result.error || 'Empresa não encontrada'); return; }
+        console.log('[LoginScreen] Company verification result:', result);
+        
+        if (!result.success) { 
+          Alert.alert('Erro', result.error || 'Empresa não encontrada'); 
+          return; 
+        }
+        
+        console.log('[LoginScreen] Signing in with Supabase...');
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        
+        if (error) {
+          console.error('[LoginScreen] Supabase sign in error:', {
+            name: error.name,
+            message: error.message,
+            status: error.status,
+            code: error.code
+          });
+          throw error;
+        }
+        
+        console.log('[LoginScreen] Login successful, setting auth token...');
         if (data.session?.access_token) setAuthToken(data.session.access_token);
+        console.log('[LoginScreen] Navigating to tabs...');
         router.replace('/(tabs)');
       }
     } catch (e: any) {
-      Alert.alert('Erro', e.message || 'Erro ao autenticar');
-    } finally { setLoading(false); }
+      console.error('[LoginScreen] Login error:', {
+        name: e?.name,
+        message: e?.message,
+        code: e?.code,
+        status: e?.status,
+        stack: e?.stack?.substring(0, 200)
+      });
+      
+      let errorMessage = 'Erro ao autenticar';
+      let errorTitle = 'Erro';
+      
+      // Tratamento específico para AbortError (timeout)
+      if (e?.name === 'AbortError') {
+        errorTitle = 'Tempo Esgotado';
+        errorMessage = 'O servidor está demorando para responder. Isso é normal quando o servidor fica inativo.\n\nTente novamente em 10-20 segundos.';
+      } else if (e?.message?.includes('Network request failed') || e?.message?.includes('fetch')) {
+        errorTitle = 'Erro de Conexão';
+        errorMessage = 'Verifique sua conexão com a internet e tente novamente.';
+      } else if (e?.message) {
+        errorMessage = e.message;
+      }
+      
+      Alert.alert(errorTitle, errorMessage);
+    } finally { 
+      setLoading(false); 
+    }
   }
 
   return (
-    <AnimatedContainer type="fade" duration={200}>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : (StatusBar.currentHeight ?? 0)}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <KanuxLogo size="lg" />
-            <Text style={styles.subtitle}>{isSignUp ? 'Crie sua conta' : 'Bem-vindo de volta'}</Text>
-          </View>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : (StatusBar.currentHeight ?? 0)}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <KanuxLogo size="lg" />
+          <Text style={styles.subtitle}>{isSignUp ? 'Crie sua conta' : 'Bem-vindo de volta'}</Text>
+        </View>
         <View style={styles.form}>
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email</Text>
@@ -103,7 +159,6 @@ export default function LoginScreen() {
         <Text style={styles.footer}>© 2025 Kanux - Help Desk</Text>
       </ScrollView>
     </KeyboardAvoidingView>
-  </AnimatedContainer>
   );
 }
 

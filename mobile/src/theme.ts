@@ -1,6 +1,5 @@
 // Theme colors for the app - Discord-inspired Dark Theme
 import { spacing as spacingTokens, roundness, typography as typographyTokens } from './tokens/design-tokens';
-import { tokens } from './tokens';
 
 interface ThemeSpacing {
   containerPadding: number;
@@ -130,17 +129,17 @@ export const colors = {
   
   // Discord-specific (legacy)
   mention: '#5865F220',
-  channelIcon: tokens.textMuted,
-  online: tokens.success,
-  idle: tokens.warning,
-  dnd: tokens.error,
-  offline: tokens.textMuted,
+  channelIcon: '#80848E',
+  online: '#23A559',
+  idle: '#F0B232',
+  dnd: '#ED4245',
+  offline: '#80848E',
   
   // Basic
   white: '#ffffff',
   black: '#000000',
-  gray: tokens.textMuted,
-  lightGray: tokens.textSecondary,
+  gray: '#80848E',
+  lightGray: '#B5BAC1',
 };
 
 // =============================================================================

@@ -9,8 +9,6 @@ import { colors, spacing, borderRadius } from '../../src/theme';
 import { getWorkingHoursRestrictionMessage } from '../../src/lib/workingHours';
 import { useWebSocket } from '../../src/contexts/WebSocketContext';
 import { GradientButton } from '../../src/components/Button';
-import { AnimatedContainer } from '../../src/components/AnimatedContainer';
-
 export default function CreateTicketScreen() {
   const { profile } = useAuth();
   const { createTicketWs, isConnected } = useWebSocket();
@@ -128,8 +126,7 @@ export default function CreateTicketScreen() {
   });
 
   return (
-    <AnimatedContainer type="slide" duration={200}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.form}>
 
         {/* Company Selector */}
@@ -271,9 +268,7 @@ export default function CreateTicketScreen() {
         </GradientButton>
         {blockedByWorkingHours && <Text style={styles.emptyHint}>{workingHoursMessage}</Text>}
       </View>
-    </ScrollView>
-    </AnimatedContainer>
-  );
+    </ScrollView>);
 }
 
 const styles = StyleSheet.create({

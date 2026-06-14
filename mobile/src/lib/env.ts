@@ -1,27 +1,18 @@
-import Constants from 'expo-constants';
-
 // Environment configuration for mobile app
-// Update these values with your Supabase project credentials
-// or set them in app.json under "extra" or use expo-env
+// Hardcoded values from app.json extra field
 
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || 
-                    process.env.EXPO_PUBLIC_SUPABASE_URL || 
-                    'https://your-project.supabase.co';
-
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || 
-                        process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 
-                        'your-anon-key';
-
+// Valores do app.json "extra"
 export const ENV = {
-  SUPABASE_URL: supabaseUrl,
-  SUPABASE_ANON_KEY: supabaseAnonKey,
+  SUPABASE_URL: 'https://amybrdlkfocmiolcnybl.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFteWJyZGxrZm9jbWlvbGNueWJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0MDQ3ODYsImV4cCI6MjA4Mzk4MDc4Nn0.B4R_9h58oSeC56l_eLafQk1fJpI29cM8T5rzqM5s2lg',
+  API_URL: 'https://kanux-mobile-web.onrender.com',
 };
 
 // Validate configuration
-if (ENV.SUPABASE_URL.includes('your-project') || !ENV.SUPABASE_URL) {
-  console.warn('⚠️ Supabase URL not configured. Please update src/lib/env.ts or app.json');
+if (!ENV.SUPABASE_URL) {
+  console.error('❌ Supabase URL is not configured.');
 }
 
-if (ENV.SUPABASE_ANON_KEY.includes('your-anon-key') || !ENV.SUPABASE_ANON_KEY) {
-  console.warn('⚠️ Supabase ANON KEY not configured. Please update src/lib/env.ts or app.json');
+if (!ENV.SUPABASE_ANON_KEY) {
+  console.error('❌ Supabase ANON KEY is not configured.');
 }
