@@ -1,52 +1,52 @@
 /**
  * Kanux Mobile - Design Tokens: Colors
- * Centralized color palette for brand consistency
+ * Midnight SaaS Design System
  */
 
 export const colors = {
-  // Brand colors
+  // Brand colors - Midnight SaaS
   brand: {
-    primary: '#8B5CF6',
-    secondary: '#7C3AED',
-    accent: '#A78BFA',
-    gradient: ['#8B5CF6', '#6D28D9'] as const,
+    primary: '#3b82f6',
+    secondary: '#2563eb',
+    accent: '#60a5fa',
+    gradient: ['#3b82f6', '#2563eb'] as const,
   },
 
-  // Background colors (dark mode)
+  // Background colors - Midnight SaaS
   background: {
-    primary: '#09090B',
-    secondary: '#18181B',
-    tertiary: '#27272A',
-    elevated: '#3F3F46',
+    primary: '#131313',
+    secondary: '#1c1b1b',
+    tertiary: '#1f1f1f',
+    elevated: '#2a2929',
   },
 
-  // Text colors
+  // Text colors - Midnight SaaS
   text: {
-    primary: '#FAFAFA',
-    secondary: '#A1A1AA',
-    tertiary: '#71717A',
+    primary: '#e3e2e6',
+    secondary: '#c4c6d0',
+    tertiary: '#8e9099',
   },
 
   // Status colors
   status: {
-    online: '#10B981',
-    offline: '#71717A',
-    busy: '#EF4444',
+    online: '#23A559',
+    offline: '#8e9099',
+    busy: '#ED4245',
   },
 
   // Validation colors
   validation: {
-    error: '#EF4444',
-    success: '#10B981',
-    warning: '#F59E0B',
+    error: '#ffb4ab',
+    success: '#23A559',
+    warning: '#F0B232',
   },
 
-  // Border colors
+  // Border colors - Midnight SaaS
   border: {
-    default: '#27272A',
-    focused: '#8B5CF6',
-    error: '#EF4444',
-    success: '#10B981',
+    default: '#44474f',
+    focused: '#3b82f6',
+    error: '#ffb4ab',
+    success: '#23A559',
   },
 } as const;
 

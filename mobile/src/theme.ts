@@ -1,5 +1,5 @@
-// Theme colors for the app - Discord-inspired Dark Theme
-import { spacing as spacingTokens, roundness, typography as typographyTokens } from './tokens/design-tokens';
+// Theme colors for the app - Midnight SaaS Design System
+import { colors as tokenColors } from './tokens/colors';
 
 interface ThemeSpacing {
   containerPadding: number;
@@ -77,119 +77,111 @@ interface Theme {
 }
 
 export const colors = {
-  // Primary colors - Discord Blurple
-  primary: '#5865F2',
-  primaryDark: '#4752C4',
-  primaryLight: '#7289DA',
-  primaryMuted: '#9BA4D4',
+  // Primary colors - Midnight SaaS
+  primary: tokenColors.brand.primary,
+  primaryDark: tokenColors.brand.secondary,
+  primaryLight: tokenColors.brand.accent,
+  primaryMuted: '#93c5fd',
 
-  // Background colors - Discord Dark
-  background: '#1E1F22',
-  backgroundLight: '#2B2D31',
-  surface: '#313338',
-  surfaceLight: '#383A40',
-  surfaceContainer: '#2B2D31',
-  surfaceContainerLow: '#1c1b1b',
+  // Background colors - Midnight SaaS
+  background: tokenColors.background.primary,
+  backgroundLight: tokenColors.background.secondary,
+  surface: tokenColors.background.tertiary,
+  surfaceLight: tokenColors.background.elevated,
+  surfaceContainer: tokenColors.background.tertiary,
+  surfaceContainerLow: tokenColors.background.secondary,
   surfaceContainerLowest: '#0e0e0e',
-  surfaceContainerHigh: '#383A40',
-  surfaceContainerHighest: '#3F4147',
+  surfaceContainerHigh: tokenColors.background.elevated,
+  surfaceContainerHighest: '#353434',
 
-  // Text colors
-  text: '#F2F3F5',
-  textSecondary: '#B5BAC1',
-  textMuted: '#80848E',
+  // Text colors - Midnight SaaS
+  text: tokenColors.text.primary,
+  textSecondary: tokenColors.text.secondary,
+  textMuted: tokenColors.text.tertiary,
 
   // Status colors
-  success: '#23A559',
-  warning: '#F0B232',
-  error: '#ED4245',
-  info: '#5865F2',
+  success: tokenColors.validation.success,
+  warning: tokenColors.validation.warning,
+  error: tokenColors.validation.error,
+  info: tokenColors.brand.primary,
 
   // Priority colors
-  priorityHigh: '#ED4245',
-  priorityMedium: '#F0B232',
-  priorityLow: '#23A559',
+  priorityHigh: tokenColors.validation.error,
+  priorityMedium: tokenColors.validation.warning,
+  priorityLow: tokenColors.validation.success,
 
   // Status ticket colors
-  statusOpen: '#5865F2',
-  statusPending: '#F0B232',
-  statusResolved: '#23A559',
-  statusClosed: '#80848E',
+  statusOpen: tokenColors.brand.primary,
+  statusPending: tokenColors.validation.warning,
+  statusResolved: tokenColors.validation.success,
+  statusClosed: tokenColors.text.tertiary,
 
   // Brand colors
-  brand: '#5865F2',
-  brandDark: '#4752C4',
-  brandLight: '#A5B1F5',
+  brand: tokenColors.brand,
+  brandDark: tokenColors.brand.secondary,
+  brandLight: tokenColors.brand.accent,
 
   // Other
-  border: '#3F4147',
-  borderLight: '#4E5058',
-  divider: '#35373C',
+  border: tokenColors.border.default,
+  borderLight: '#5a5d66',
+  divider: '#353434',
   overlay: 'rgba(0, 0, 0, 0.85)',
   
-  // Discord-specific (legacy)
-  mention: '#5865F220',
-  channelIcon: '#80848E',
-  online: '#23A559',
-  idle: '#F0B232',
-  dnd: '#ED4245',
-  offline: '#80848E',
+  // Discord-specific (legacy - kept for compatibility)
+  mention: '#3b82f620',
+  channelIcon: tokenColors.text.tertiary,
+  online: tokenColors.status.online,
+  idle: tokenColors.validation.warning,
+  dnd: tokenColors.validation.error,
+  offline: tokenColors.status.offline,
   
   // Basic
   white: '#ffffff',
   black: '#000000',
-  gray: '#80848E',
-  lightGray: '#B5BAC1',
+  gray: tokenColors.text.tertiary,
+  lightGray: tokenColors.text.secondary,
 };
 
 // =============================================================================
-// SPACING - Semantic Naming with Legacy Compatibility
+// SPACING - Midnight SaaS Tokens
 // =============================================================================
 
 export const spacing: ThemeSpacing = {
-  // Legacy compatibility
-  xs: spacingTokens.xs,
-  sm: spacingTokens.sm,
-  md: spacingTokens.md,
-  lg: spacingTokens.lg,
-  xl: spacingTokens.xl,
-  xxl: spacingTokens.xxl,
-  
-  // New semantic naming
-  containerPadding: spacingTokens.containerPadding,
-  stackGapLg: spacingTokens.stackGapLg,
-  stackGapMd: spacingTokens.stackGapMd,
-  stackGapSm: spacingTokens.stackGapSm,
-  inlineGapMd: spacingTokens.inlineGapMd,
-  inlineGapSm: spacingTokens.inlineGapSm,
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
+  containerPadding: 16,
+  stackGapLg: 24,
+  stackGapMd: 16,
+  stackGapSm: 8,
+  inlineGapMd: 12,
+  inlineGapSm: 8,
 };
 
 // =============================================================================
-// BORDER RADIUS - Semantic Naming with Legacy Compatibility
+// BORDER RADIUS - Midnight SaaS Tokens
 // =============================================================================
 
 export const borderRadius: ThemeBorderRadius = {
-  // Legacy compatibility
-  xs: roundness.xs,
-  sm: roundness.sm,
-  md: roundness.medium, // Updated: 12 → 8
-  lg: roundness.large,
-  xl: roundness.xl,
-  full: roundness.full,
-  
-  // New semantic naming
-  none: roundness.none,
-  small: roundness.small,
-  medium: roundness.medium,
-  large: roundness.large,
+  none: 0,
+  small: 4,
+  medium: 8,
+  large: 16,
+  full: 9999,
+  xs: 4,
+  sm: 8,
+  lg: 16,
+  xl: 20,
 };
 
 // =============================================================================
-// FONT SIZE - With Typography Scale
+// FONT SIZE - Midnight SaaS Typography Scale
 // =============================================================================
 
 export const fontSize: ThemeFontSize = {
-  // Legacy compatibility
   xs: 12,
   sm: 14,
   md: 16,
@@ -197,23 +189,21 @@ export const fontSize: ThemeFontSize = {
   xl: 20,
   xxl: 24,
   xxxl: 32,
-  
-  // Typography scale from Midnight SaaS
-  displayLg: typographyTokens.scale.displayLg,
-  displayMd: typographyTokens.scale.displayMd,
-  displaySm: typographyTokens.scale.displaySm,
-  headlineLg: typographyTokens.scale.headlineLg,
-  headlineMd: typographyTokens.scale.headlineMd,
-  headlineSm: typographyTokens.scale.headlineSm,
-  titleLg: typographyTokens.scale.titleLg,
-  titleMd: typographyTokens.scale.titleMd,
-  titleSm: typographyTokens.scale.titleSm,
-  labelLg: typographyTokens.scale.labelLg,
-  labelMd: typographyTokens.scale.labelMd,
-  labelSm: typographyTokens.scale.labelSm,
-  bodyLg: typographyTokens.scale.bodyLg,
-  bodyMd: typographyTokens.scale.bodyMd,
-  bodySm: typographyTokens.scale.bodySm,
+  displayLg: 57,
+  displayMd: 45,
+  displaySm: 36,
+  headlineLg: 32,
+  headlineMd: 28,
+  headlineSm: 24,
+  titleLg: 22,
+  titleMd: 16,
+  titleSm: 14,
+  labelLg: 14,
+  labelMd: 12,
+  labelSm: 11,
+  bodyLg: 16,
+  bodyMd: 14,
+  bodySm: 12,
 };
 
 // =============================================================================

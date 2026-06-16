@@ -23,18 +23,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  useEffect(() => { 
-    console.log('[LoginScreen] useEffect - Mounted');
-    // Aguardar inicialização da API antes de qualquer chamada
-    (async () => {
-      try {
-        await initApi();
-        console.log('[LoginScreen] API initialized successfully');
-      } catch (e: any) {
-        console.error('[LoginScreen] API init failed:', e?.message || e);
-      }
-    })();
-  }, []);
+  useEffect(() => { initApi().catch(() => {}); }, []);
 
   async function handleAuth() {
     if (!email || !password) { Alert.alert('Erro', 'Preencha todos os campos'); return; }
