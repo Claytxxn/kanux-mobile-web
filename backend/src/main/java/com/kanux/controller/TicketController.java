@@ -1,24 +1,36 @@
 package com.kanux.controller;
 
-import com.kanux.dto.ApiResponse;
-import com.kanux.dto.CreateTicketRequest;
-import com.kanux.dto.UpdateTicketRequest;
-import com.kanux.entity.Ticket;
-import com.kanux.entity.TicketComment;
-import com.kanux.entity.UserProfile;
-import com.kanux.repository.TicketCommentRepository;
-import com.kanux.repository.TicketRepository;
-import com.kanux.service.WorkingHoursService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.kanux.dto.ApiResponse;
+import com.kanux.dto.CreateTicketRequest;
+import com.kanux.dto.UpdateTicketRequest;
+// import com.kanux.config.PushNotificationService;
+import com.kanux.entity.Ticket;
+import com.kanux.entity.TicketComment;
+import com.kanux.entity.UserProfile;
+import com.kanux.repository.DepartmentRepository;
+import com.kanux.repository.TicketCommentRepository;
+import com.kanux.repository.TicketRepository;
+import com.kanux.service.WorkingHoursService;
 
 @RestController
 @RequestMapping("/api/tickets")
@@ -28,16 +40,24 @@ public class TicketController {
     private final TicketCommentRepository commentRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final WorkingHoursService workingHoursService;
+    private final DepartmentRepository departmentRepository;
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TicketController.class);
+    private final com.kanux.config.PushNotificationService pushNotificationService;
 
     public TicketController(
             TicketRepository ticketRepository,
             TicketCommentRepository commentRepository,
             SimpMessagingTemplate messagingTemplate,
-            WorkingHoursService workingHoursService) {
+            WorkingHoursService workingHoursService,
+            DepartmentRepository departmentRepository,
+            com.kanux.config.PushNotificationService pushNotificationService) {
         this.ticketRepository = ticketRepository;
         this.commentRepository = commentRepository;
         this.messagingTemplate = messagingTemplate;
         this.workingHoursService = workingHoursService;
+        this.departmentRepository = departmentRepository;
+        this.pushNotificationService = pushNotificationService;
     }
 
     @GetMapping
@@ -56,7 +76,32 @@ public class TicketController {
 
         if (companyId != null) {
             var tickets = ticketRepository.findByCompanyIdOrderByCreatedAtDesc(UUID.fromString(companyId));
-            return ResponseEntity.ok(ApiResponse.ok(tickets));
+            // Monta um Map para cada ticket, incluindo nome do departamento
+            var result = tickets.stream().map(ticket -> {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("id", ticket.getId());
+                map.put("number", ticket.getNumber());
+                map.put("company_id", ticket.getCompanyId());
+                map.put("department_id", ticket.getDepartmentId());
+                map.put("creator_profile_id", ticket.getCreatorProfileId());
+                map.put("assignee_profile_id", ticket.getAssigneeProfileId());
+                map.put("title", ticket.getTitle());
+                map.put("description", ticket.getDescription());
+                map.put("status", ticket.getStatus());
+                map.put("priority", ticket.getPriority());
+                map.put("created_at", ticket.getCreatedAt());
+                map.put("updated_at", ticket.getUpdatedAt());
+                map.put("resolved_at", ticket.getResolvedAt());
+                // Busca nome do departamento se houver
+                if (ticket.getDepartmentId() != null) {
+                    departmentRepository.findById(java.util.Objects.requireNonNull(ticket.getDepartmentId()))
+                        .ifPresent(dept -> map.put("department_name", dept.getName()));
+                } else {
+                    map.put("department_name", null);
+                }
+                return map;
+            }).collect(Collectors.toList());
+            return ResponseEntity.ok(ApiResponse.ok(result));
         }
 
         return ResponseEntity.badRequest().body(ApiResponse.fail("companyId ou ticketId é obrigatório"));
@@ -77,6 +122,11 @@ public class TicketController {
         ticket.setPriority(req.getPriority() != null ? Ticket.TicketPriority.valueOf(req.getPriority().trim().toUpperCase()) : Ticket.TicketPriority.MEDIUM);
         ticket.setStatus(Ticket.TicketStatus.OPEN);
         ticket = ticketRepository.save(ticket);
+        try {
+            messagingTemplate.convertAndSend("/topic/company/" + ticket.getCompanyId() + "/tickets", ticket);
+        } catch (RuntimeException e) {
+            log.warn("[WS] Falha ao publicar criação do ticket {}: {}", ticket.getId(), e.getMessage());
+        }
         return ResponseEntity.ok(ApiResponse.ok(ticket));
     }
 
@@ -87,17 +137,40 @@ public class TicketController {
         if (p == null) return ResponseEntity.status(401).body(ApiResponse.fail("Unauthorized"));
         workingHoursService.ensureAllowed(p, "atualizar chamados");
         return ticketRepository.findById(UUID.fromString(req.getId())).map(t -> {
+            UUID previousAssigneeId = t.getAssigneeProfileId();
+            UUID newAssigneeId = previousAssigneeId;
             if (req.getTitle()       != null) t.setTitle(req.getTitle());
             if (req.getDescription() != null) t.setDescription(req.getDescription());
             if (req.getPriority()    != null) t.setPriority(Ticket.TicketPriority.valueOf(req.getPriority().trim().toUpperCase()));
             if (req.getDepartmentId()      != null) t.setDepartmentId(UUID.fromString(req.getDepartmentId()));
-            if (req.getAssigneeProfileId() != null) t.setAssigneeProfileId(UUID.fromString(req.getAssigneeProfileId()));
+            if (req.getAssigneeProfileId() != null) {
+                newAssigneeId = UUID.fromString(req.getAssigneeProfileId());
+                t.setAssigneeProfileId(newAssigneeId);
+            }
             if (req.getStatus() != null) {
                 Ticket.TicketStatus s = Ticket.TicketStatus.valueOf(req.getStatus().trim().toUpperCase());
                 t.setStatus(s);
                 if (s == Ticket.TicketStatus.RESOLVED && t.getResolvedAt() == null) t.setResolvedAt(Instant.now());
             }
-            return ResponseEntity.ok(ApiResponse.ok(ticketRepository.save(t)));
+            Ticket saved = ticketRepository.save(t);
+            try {
+                messagingTemplate.convertAndSend("/topic/ticket/" + saved.getId() + "/updated", saved);
+            } catch (RuntimeException e) {
+                log.warn("[WS] Falha ao publicar atualização do ticket {}: {}", saved.getId(), e.getMessage());
+            }
+            try {
+                messagingTemplate.convertAndSend("/topic/company/" + saved.getCompanyId() + "/tickets", saved);
+            } catch (RuntimeException e) {
+                log.warn("[WS] Falha ao publicar lista de tickets da empresa {}: {}", saved.getCompanyId(), e.getMessage());
+            }
+            if (newAssigneeId != null && !newAssigneeId.equals(previousAssigneeId)) {
+                pushNotificationService.notifyTicketAssigned(
+                        saved.getId(),
+                        newAssigneeId,
+                        saved.getTitle(),
+                        saved.getCompanyId() != null ? saved.getCompanyId().toString() : null);
+            }
+            return ResponseEntity.ok(ApiResponse.ok(saved));
         }).orElse(ResponseEntity.notFound().build());
     }
 

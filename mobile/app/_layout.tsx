@@ -36,57 +36,34 @@ function AuthGate(): ReactElement | null {
   const pathname = usePathname();
   const hasNavigated = useRef(false);
   
-  // Log 1: No início do render
-  console.log('[AuthGate] RENDER:', { loading, user: user?.email ?? null, profile: profile?.display_name ?? null, pathname });
-  
   useEffect(() => {
-    // Log 2: No início do useEffect
-    console.log('[AuthGate] useEffect:', { loading, hasNavigated: hasNavigated.current, user: !!user, profile: !!profile });
+    if (loading) return;
     
-    if (loading) {
-      console.log('[AuthGate] SKIP: loading=true');
-      return;
-    }
-    
-    if (hasNavigated.current) {
-      console.log('[AuthGate] SKIP: already navigated');
-      return;
-    }
-    
-    // Log 3: Antes de decidir navegação
-    console.log('[AuthGate] Deciding navigation...');
+    if (hasNavigated.current) return;
     
     if (user && profile) {
-      console.log('[AuthGate] NAVIGATE -> Tabs (user=' + user.email + ')');
       hasNavigated.current = true;
       router.replace('/(tabs)');
       return;
     }
     
     if (user && !profile) {
-      console.log('[AuthGate] NAVIGATE -> Company Select (user=' + user.email + ', no profile)');
       hasNavigated.current = true;
       router.replace('/company/select');
       return;
     }
     
     if (!user) {
-      // Log 4: Imediatamente antes do router.replace
-      console.log('[AuthGate] NAVIGATE -> Login (user=null). Calling router.replace NOW...');
       hasNavigated.current = true;
-      console.log('[AuthGate] About to call router.replace(/(auth)/login)...');
       router.replace('/(auth)/login');
-      console.log('[AuthGate] router.replace called successfully');
       return;
     }
   }, [user, profile, loading, pathname, router]);
 
   if (loading) {
-    console.log('[AuthGate] RETURN: LoadingScreen');
     return <LoadingScreen />;
   }
 
-  console.log('[AuthGate] RETURN: null');
   return null;
 }
 
@@ -126,8 +103,6 @@ export default function RootLayout(): ReactElement {
   if (!fontsLoaded) {
     return <LoadingScreen />;
   }
-
-  console.log('[RootLayout] Rendering Stack and providers...');
 
   return (
     <SafeAreaProvider>

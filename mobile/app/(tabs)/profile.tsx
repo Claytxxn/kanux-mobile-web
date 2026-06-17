@@ -308,7 +308,7 @@ export default function ProfileScreen() {
         <Text style={styles.signOutText}>Sair</Text>
       </TouchableOpacity>
 
-      <Text style={styles.version}>Versão 1.0.1</Text>
+      <Text style={styles.version}>Versão 1.0.0.5</Text>
 
       {/* Modal de Edição de Perfil */}
       <Modal visible={showEditModal} transparent animationType="slide">

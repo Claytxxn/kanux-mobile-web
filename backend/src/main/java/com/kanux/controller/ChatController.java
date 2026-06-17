@@ -13,8 +13,6 @@ import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -117,7 +115,7 @@ public class ChatController {
     }
 
     @SuppressWarnings("null")
-    @DeleteMapping
+    @PostMapping("/delete")
     public ResponseEntity<ApiResponse<Void>> deleteChat(
             @AuthenticationPrincipal UserProfile p, @RequestParam String id) {
         if (p == null) return ResponseEntity.status(401).body(ApiResponse.fail("Unauthorized"));
@@ -298,19 +296,19 @@ public class ChatController {
         result.put("user_profile_id", saved.getUserProfileId());
         result.put("role", saved.getRole());
         result.put("joined_at", saved.getJoinedAt());
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("action", "added");
+            payload.put("member", result);
+            messagingTemplate.convertAndSend("/topic/chat/" + cId + "/members", payload);
+        } catch (RuntimeException e) {
+            org.slf4j.LoggerFactory.getLogger(ChatController.class)
+                    .warn("[WS] Falha ao notificar membros adicionados do chat {}: {}", cId, e.getMessage());
+        }
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
-    @Transactional
-    @DeleteMapping("/{chatId}/members/{userProfileId}")
-    public ResponseEntity<ApiResponse<Void>> removeChatMember(
-            @AuthenticationPrincipal UserProfile p, @PathVariable String chatId,
-            @PathVariable String userProfileId) {
-        if (p == null) return ResponseEntity.status(401).body(ApiResponse.fail("Não autorizado"));
-        chatMemberRepository.deleteByChatIdAndUserProfileId(
-                UUID.fromString(chatId), UUID.fromString(userProfileId));
-        return ResponseEntity.ok(ApiResponse.ok(null));
-    }
+    // Mantém apenas uma definição do método removeChatMember (removida duplicidade)
 
     /** Retorna IDs dos usuários atualmente online (via WebSocket) no chat informado. */
     @GetMapping("/{chatId}/online-members")

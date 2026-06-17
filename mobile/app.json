@@ -3,7 +3,7 @@
     "name": "Kanux",
     "slug": "kanux-mobile",
     "version": "1.0.0.5",
-    "sdkVersion": "54.0.0",
+    "sdkVersion": "56.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "kanux",
@@ -35,7 +35,19 @@
           "androidMode": "default",
           "androidCollapsedTitle": "Mensagens"
         }
-      ]
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#09090B"
+        }
+      ],
+      "expo-sqlite",
+      "expo-asset",
+      "expo-secure-store",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true
@@ -47,6 +59,9 @@
       "apiUrl": "https://kanux-mobile-web.onrender.com",
       "eas": {
         "projectId": "a8abab8f-4062-42df-9b42-0ad68186f26c"
+      },
+      "cli": {
+        "appVersionSource": "git-tag"
       }
     }
   }

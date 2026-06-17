@@ -135,8 +135,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    console.log('[AuthContext] useEffect initializing...');
-    
     // Kick off API URL detection early
     initApi().catch((error) => {
       console.error('[AuthContext] initApi error:', error);
@@ -151,7 +149,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const unsubscribeNet = NetInfo.addEventListener((state: any) => {
       const onlineNow = state.isConnected ?? false;
-      console.log('[AuthContext] NetInfo state change:', { isConnected: state.isConnected, onlineNow });
       setIsOnline(onlineNow);
 
       if (previousOnlineRef.current === null) {
@@ -169,18 +166,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (currentUser && !hadConnection && onlineNow && hadOfflineSessionRef.current) {
         // Ao reconectar: NÃO forçar logout — manter sessão e apenas marcar para sync
         hadOfflineSessionRef.current = false;
-        console.log('🔄 Reconectado — sessão mantida, sync será feito pelo SyncContext');
       }
 
       previousOnlineRef.current = onlineNow;
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[AuthContext] getSession success:', {
-        hasSession: !!session,
-        hasUser: !!session?.user,
-        email: session?.user?.email
-      });
       setSession(session);
       setUser(session?.user ?? null);
       userRef.current = session?.user ?? null;
@@ -190,29 +181,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         bootstrapSession(session.user);
       }
-      console.log('[AuthContext] Setting loading=false (getSession path)');
       setLoading(false);
     }).catch((error) => {
       console.error('[AuthContext] getSession ERROR:', error);
-      console.error('[AuthContext] Error details:', {
-        message: error?.message,
-        name: error?.name,
-        stack: error?.stack?.substring(0, 200)
-      });
       // Even on error, set loading to false to prevent infinite loading
       setUser(null);
       setSession(null);
-      console.log('[AuthContext] Setting loading=false (error path)');
       setLoading(false);
     });
 
     const { data: { subscription }, error: authStateError } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('[AuthContext] onAuthStateChange:', {
-        event: _event,
-        hasSession: !!session,
-        hasUser: !!session?.user,
-        email: session?.user?.email
-      });
       setSession(session);
       setUser(session?.user ?? null);
       userRef.current = session?.user ?? null;
@@ -221,12 +199,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         setLoading(true);
         bootstrapSession(session.user).finally(() => {
-          console.log('[AuthContext] bootstrapSession complete, setting loading=false');
           setLoading(false);
         });
       } else {
         setProfile(null);
-        console.log('[AuthContext] No user, setting loading=false');
         setLoading(false);
       }
     });

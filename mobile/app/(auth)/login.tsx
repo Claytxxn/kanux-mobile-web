@@ -12,9 +12,6 @@ import { colors, spacing, borderRadius } from '../../src/theme';
 import KanuxLogo from '../../src/components/KanuxLogo';
 
 export default function LoginScreen() {
-  // Log 6: No topo do corpo da função
-  console.log('[LoginScreen] TOP OF FUNCTION - Rendering...');
-  
   const [email, setEmail]             = useState('');
   const [password, setPassword]       = useState('');
   const [companySlug, setCompanySlug] = useState('');
@@ -36,31 +33,18 @@ export default function LoginScreen() {
         if (error) throw error;
         Alert.alert('Sucesso', 'Conta criada! Verifique seu email.');
       } else {
-        console.log('[LoginScreen] Verifying company:', companySlug);
         const result = await api.verifyCompany(companySlug.trim());
-        console.log('[LoginScreen] Company verification result:', result);
         
         if (!result.success) { 
           Alert.alert('Erro', result.error || 'Empresa não encontrada'); 
           return; 
         }
         
-        console.log('[LoginScreen] Signing in with Supabase...');
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         
-        if (error) {
-          console.error('[LoginScreen] Supabase sign in error:', {
-            name: error.name,
-            message: error.message,
-            status: error.status,
-            code: error.code
-          });
-          throw error;
-        }
+        if (error) throw error;
         
-        console.log('[LoginScreen] Login successful, setting auth token...');
         if (data.session?.access_token) setAuthToken(data.session.access_token);
-        console.log('[LoginScreen] Navigating to tabs...');
         router.replace('/(tabs)');
       }
     } catch (e: any) {

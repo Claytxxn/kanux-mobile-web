@@ -24,7 +24,7 @@ function getImageUrlFromComment(content?: string): string | null {
 export default function TicketScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, profile } = useAuth();
-  const { subscribeTicketComments, subscribeTicketUpdates, sendTicketCommentWs, updateTicketWs } = useWebSocket();
+  const { subscribeTicketComments, subscribeTicketUpdates, sendTicketCommentWs, updateTicketWs, isConnected: wsConnected } = useWebSocket();
   const router = useRouter();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [comments, setComments] = useState<any[]>([]);
@@ -119,14 +119,21 @@ export default function TicketScreen() {
     
     setSubmitting(true);
     try {
-      const sent = sendTicketCommentWs(id, newComment.trim());
-      if (!sent) {
-        Alert.alert('WebSocket desconectado', 'Conecte-se novamente para enviar comentários em tempo real.');
+      const content = newComment.trim();
+      const sent = wsConnected && sendTicketCommentWs(id, content);
+      if (sent) {
+        setNewComment('');
         return;
+      }
+
+      const created = await api.addTicketComment(id, content);
+      if (created?.data) {
+        appendComment(created.data);
       }
       setNewComment('');
     } catch (error) {
       console.error('Error adding comment:', error);
+      Alert.alert('Erro', 'Falha ao enviar comentário. Tente novamente.');
     } finally {
       setSubmitting(false);
     }
@@ -201,12 +208,17 @@ export default function TicketScreen() {
         return;
       }
 
-      const sent = sendTicketCommentWs(id, `${TICKET_IMAGE_PREFIX}${url}`);
+      const payload = `${TICKET_IMAGE_PREFIX}${url}`;
+      const sent = wsConnected && sendTicketCommentWs(id, payload);
       if (!sent) {
-        Alert.alert('WebSocket desconectado', 'Conecte-se novamente para enviar comentários em tempo real.');
+        const created = await api.addTicketComment(id, payload);
+        if (created?.data) {
+          appendComment(created.data);
+        }
       }
     } catch (error) {
       console.error('Erro ao adicionar foto no ticket:', error);
+      Alert.alert('Erro', 'Falha ao enviar foto no ticket.');
     } finally {
       setSubmitting(false);
     }
@@ -220,12 +232,16 @@ export default function TicketScreen() {
     }
     
     try {
-      const sent = updateTicketWs(id, { status: newStatus });
+      const sent = wsConnected && updateTicketWs(id, { status: newStatus });
       if (!sent) {
-        Alert.alert('WebSocket desconectado', 'Conecte-se novamente para atualizar o ticket em tempo real.');
+        const updated = await api.updateTicket({ id, status: newStatus });
+        if (updated?.data) {
+          setTicket(updated.data as Ticket);
+        }
       }
     } catch (error) {
       console.error('Error updating status:', error);
+      Alert.alert('Erro', 'Falha ao atualizar status do ticket.');
     }
   }
 
@@ -237,12 +253,16 @@ export default function TicketScreen() {
     }
     
     try {
-      const sent = updateTicketWs(id, { priority: newPriority });
+      const sent = wsConnected && updateTicketWs(id, { priority: newPriority });
       if (!sent) {
-        Alert.alert('WebSocket desconectado', 'Conecte-se novamente para atualizar o ticket em tempo real.');
+        const updated = await api.updateTicket({ id, priority: newPriority });
+        if (updated?.data) {
+          setTicket(updated.data as Ticket);
+        }
       }
     } catch (error) {
       console.error('Erro ao atualizar prioridade:', error);
+      Alert.alert('Erro', 'Falha ao atualizar prioridade do ticket.');
     }
   }
 

@@ -153,10 +153,11 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   // Subscriptions STOMP ativas: topic → StompSubscription
   const stompSubsRef = useRef<Map<string, StompSubscription>>(new Map());
 
-  const getWsUrl = useCallback((): string => {
+  const getWsUrl = useCallback((token: string): string => {
     const apiUrl = getApiUrl();
     // https://... → wss://... | http://... → ws://...
-    return apiUrl.replace(/^https/, 'wss').replace(/^http/, 'ws') + '/ws-native';
+    const baseWs = apiUrl.replace(/^https/, 'wss').replace(/^http/, 'ws');
+    return `${baseWs}/ws-native?access_token=${encodeURIComponent(token)}`;
   }, []);
 
   const connect = useCallback(async () => {
@@ -168,7 +169,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     const token = data.session?.access_token;
     if (!token) return;
 
-    const wsUrl = getWsUrl();
+    const wsUrl = getWsUrl(token);
     console.log('[WS] Conectando em', wsUrl);
 
     const client = new Client({
@@ -177,6 +178,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
+      connectionTimeout: 12000,
+      // React Native pode remover o terminador NULL em frames recebidos.
+      appendMissingNULLonIncoming: true,
       onConnect: () => {
         console.log('[WS] Conectado ao STOMP backend');
         setIsConnected(true);
@@ -194,6 +198,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       },
       onWebSocketError: (evt) => {
         console.warn('[WS] Erro WebSocket:', evt);
+      },
+      onWebSocketClose: (evt) => {
+        console.warn('[WS] WebSocket fechado:', evt.code, evt.reason);
+        setIsConnected(false);
       },
     });
 
