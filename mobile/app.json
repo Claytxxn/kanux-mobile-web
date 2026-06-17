@@ -3,7 +3,6 @@
     "name": "Kanux",
     "slug": "kanux-mobile",
     "version": "1.0.0.5",
-    "sdkVersion": "56.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "kanux",
@@ -13,9 +12,15 @@
       "resizeMode": "contain",
       "backgroundColor": "#09090B"
     },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/865e8a87-1cb7-41e5-845f-0fae200962b9"
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kanux.mobile",
+      "bundleIdentifier": "com.clarahzz.kanuxmobile",
       "buildNumber": "1005"
     },
     "android": {
@@ -23,7 +28,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#09090B"
       },
-      "package": "com.kanux.mobile",
+      "package": "com.clarahzz.kanuxmobile",
       "versionCode": 1005,
       "softwareKeyboardLayoutMode": "pan"
     },
@@ -46,8 +51,7 @@
       ],
       "expo-sqlite",
       "expo-asset",
-      "expo-secure-store",
-      "expo-status-bar"
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
@@ -58,7 +62,7 @@
       "isProduction": true,
       "apiUrl": "https://kanux-mobile-web.onrender.com",
       "eas": {
-        "projectId": "a8abab8f-4062-42df-9b42-0ad68186f26c"
+        "projectId": "865e8a87-1cb7-41e5-845f-0fae200962b9"
       },
       "cli": {
         "appVersionSource": "git-tag"
