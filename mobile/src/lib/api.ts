@@ -19,7 +19,8 @@ const detectApiUrl = async (): Promise<string> => {
     for (const url of urlsToTry) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        // Aumentado para 60 segundos para suportar cold start do Render
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
 
         const response = await fetch(`${url}/api/verify-company`, {
           method: 'POST',
@@ -37,8 +38,12 @@ const detectApiUrl = async (): Promise<string> => {
           detectionPromise = null;
           return url;
         }
-      } catch {
-        console.log(`❌ Backend indisponível: ${url}`);
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.log(`❌ Backend timeout (>60s): ${url}`);
+        } else {
+          console.log(`❌ Backend indisponível: ${url} - ${error.message}`);
+        }
       }
     }
 
@@ -120,13 +125,13 @@ async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}, 
     }
   }
 
-  const headers = { ...getHeaders(currentToken, requiresAuth), ...options.headers };
+const headers = { ...getHeaders(currentToken, requiresAuth), ...options.headers };
   
   console.log(`📡 API ${options.method || 'GET'} ${endpoint} | auth=${!!currentToken} | token=${currentToken ? currentToken.substring(0, 20) + '...' : 'null'}`);
 
-  // Timeout de 12s — evita travar durante cold-start do Render
+  // Timeout de 70s - necessário para cold-start do Render (pode levar 30-60s)
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  const timeoutId = setTimeout(() => controller.abort(), 70000);
   
   let response: Response;
   try {

@@ -107,10 +107,10 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 const TICKET_STATUS_COLORS: Record<string, string> = {
-  OPEN:     '#5865F2',
+  OPEN:     '#3b82f6',
   PENDING:  '#F0B232',
   RESOLVED: '#23A559',
-  CLOSED:   '#80848E',
+  CLOSED:   '#8e9099',
 };
 
 // ─── Helper Functions ─────────────────────────────────────────────────────────
@@ -499,7 +499,7 @@ export default function AdminLogsScreen() {
                   <Text style={styles.breakdownTitle}>Tickets por Status</Text>
                   <View style={styles.breakdownRow}>
                     {[
-                      { label: 'Abertos', value: stats.tickets_open, color: '#5865F2' },
+                      { label: 'Abertos', value: stats.tickets_open, color: '#3b82f6' },
                       { label: 'Pendentes', value: stats.tickets_pending, color: '#F0B232' },
                       { label: 'Resolvidos', value: stats.tickets_resolved, color: '#23A559' },
                     ].map(item => (
@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
   filterGroupLabel: { fontSize: 11, color: colors.textMuted, fontWeight: '600' },
   filterChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: borderRadius.md,
     borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background,
   },
   chipActive: { borderColor: colors.primary, backgroundColor: colors.primary + '18' },
@@ -870,9 +870,9 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingHorizontal: spacing.xl },
 
   // Detail Modal
-  modalOverlay: { flex: 1, backgroundColor: '#00000090', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalContainer: {
-    backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    backgroundColor: colors.surfaceContainer, borderTopLeftRadius: borderRadius.lg, borderTopRightRadius: borderRadius.lg,
     borderTopWidth: 1, borderColor: colors.border, maxHeight: '80%',
   },
   modalHeader: {

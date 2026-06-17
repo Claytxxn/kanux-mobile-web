@@ -938,7 +938,7 @@ export default function AdminScreen() {
                         style={styles.addMemberRow}
                         onPress={() => handleAddMemberToChat(m.user_profile_id)}
                       >
-                        <View style={[styles.memberAvatar, { backgroundColor: colors.surface }]}>
+                        <View style={[styles.memberAvatar, { backgroundColor: colors.surfaceContainer }]}>
                           <Text style={[styles.memberAvatarText, { color: colors.textMuted }]}>
                             {(m.user_profiles?.display_name || 'U').charAt(0).toUpperCase()}
                           </Text>
@@ -1029,7 +1029,7 @@ export default function AdminScreen() {
                         style={styles.addMemberRow}
                         onPress={() => handleAddMemberToDept(m.user_profile_id)}
                       >
-                        <View style={[styles.memberAvatar, { backgroundColor: colors.surface }]}>
+                        <View style={[styles.memberAvatar, { backgroundColor: colors.surfaceContainer }]}>
                           <Text style={[styles.memberAvatarText, { color: colors.textMuted }]}>
                             {(m.user_profiles?.display_name || 'U').charAt(0).toUpperCase()}
                           </Text>
@@ -1147,7 +1147,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: spacing.md, backgroundColor: colors.surface,
+    padding: spacing.md, backgroundColor: colors.surfaceContainer,
     borderBottomWidth: 1, borderBottomColor: colors.divider,
   },
   backButton: { padding: 4 },
@@ -1164,13 +1164,13 @@ const styles = StyleSheet.create({
   errorAlertText: { color: '#fff', fontSize: 12, opacity: 0.92, marginTop: 1 },
   companyChip: {
     paddingHorizontal: 14, paddingVertical: 6, borderRadius: borderRadius.md,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surfaceContainer, borderWidth: 1, borderColor: colors.border,
   },
   companyChipActive: { backgroundColor: colors.primary + '18', borderColor: colors.primary },
   companyChipText: { color: colors.textSecondary, fontSize: 13, fontWeight: '500' },
   companyChipTextActive: { color: colors.text, fontWeight: '600' },
-  tabs: { flexDirection: 'row', paddingHorizontal: 6, paddingVertical: 4, backgroundColor: colors.surface, gap: 2 },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 7 },
+  tabs: { flexDirection: 'row', paddingHorizontal: 6, paddingVertical: 4, backgroundColor: colors.surfaceContainer, gap: 2 },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: borderRadius.sm },
   tabActive: { backgroundColor: colors.primary + '18' },
   tabText: { fontSize: 9, color: colors.textMuted, marginTop: 1 },
   tabTextActive: { color: colors.primary, fontWeight: '700' },
@@ -1186,14 +1186,14 @@ const styles = StyleSheet.create({
   addButtonText: { color: colors.text, fontSize: 12, fontWeight: '700' },
   // Estatísticas
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.sm },
-  statCard: { width: '48%', backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md, alignItems: 'center', gap: 4 },
-  statCard2: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md },
+  statCard: { width: '48%', backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.sm, padding: spacing.md, alignItems: 'center', gap: 4 },
+  statCard2: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.sm, padding: spacing.md },
   statNumber: { fontSize: 22, fontWeight: '700', color: colors.text },
   statNumber2: { fontSize: 15, fontWeight: '600', color: colors.text },
   statLabel: { fontSize: 11, color: colors.textMuted },
   logsNavButton: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: colors.surface, borderRadius: borderRadius.md,
+    backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.md,
     borderWidth: 1, borderColor: colors.primary + '44',
     padding: spacing.md, marginTop: spacing.sm,
   },
@@ -1201,10 +1201,10 @@ const styles = StyleSheet.create({
   logsNavSub: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
   // Membros
   memberItem: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainer,
     borderRadius: borderRadius.sm, padding: spacing.md, gap: spacing.sm, marginBottom: spacing.xs,
   },
-  memberAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary + '30', alignItems: 'center', justifyContent: 'center' },
+  memberAvatar: { width: 36, height: 36, borderRadius: borderRadius.full, backgroundColor: colors.primary + '30', alignItems: 'center', justifyContent: 'center' },
   memberAvatarText: { color: colors.text, fontSize: 14, fontWeight: '700' },
   memberInfo: { flex: 1 },
   memberName: { fontSize: 14, fontWeight: '600', color: colors.text },
@@ -1213,11 +1213,11 @@ const styles = StyleSheet.create({
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
   timeInput: { flex: 1, marginBottom: 0 },
   timeSeparator: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
-  roleChip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
+  roleChip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: borderRadius.small },
   roleText: { fontSize: 11, fontWeight: '700' },
   // Chats
   chatConfigItem: {
-    backgroundColor: colors.surface, borderRadius: borderRadius.sm,
+    backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.sm,
     padding: spacing.md, marginBottom: spacing.xs, gap: 8,
   },
   chatConfigTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -1239,54 +1239,54 @@ const styles = StyleSheet.create({
   addMemberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6, opacity: 0.85 },
   // Departamentos
   deptItem: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainer,
     borderRadius: borderRadius.sm, padding: spacing.md, gap: spacing.sm, marginBottom: spacing.xs,
   },
   deptName: { fontSize: 14, fontWeight: '600', color: colors.text },
   deptSlug: { fontSize: 12, color: colors.textMuted },
   deptChip: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: borderRadius.sm,
-    backgroundColor: colors.surface, marginRight: 6, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surfaceContainer, marginRight: 6, borderWidth: 1, borderColor: colors.border,
   },
   deptChipActive: { backgroundColor: colors.primary + '18', borderColor: colors.primary },
   deptChipText: { color: colors.textSecondary, fontSize: 13 },
   deptChipTextActive: { color: colors.text, fontWeight: '600' },
   // Matriz de permissões
-  permRow: { backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md, marginBottom: spacing.xs },
+  permRow: { backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.sm, padding: spacing.md, marginBottom: spacing.xs },
   permSection: { fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: 8 },
   permCols: { flexDirection: 'row', gap: 4 },
   permCol: { flex: 1, alignItems: 'center', gap: 3 },
   permColLabel: { fontSize: 9, fontWeight: '700', marginBottom: 2 },
   permNone: { fontSize: 11, color: colors.textMuted },
-  permBadge: { backgroundColor: colors.backgroundLight, borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 },
+  permBadge: { backgroundColor: colors.backgroundLight, borderRadius: borderRadius.small, paddingHorizontal: 4, paddingVertical: 1 },
   permBadgeText: { fontSize: 9, color: colors.textSecondary, fontWeight: '500' },
   emptyText: { textAlign: 'center', color: colors.textMuted, padding: spacing.lg },
   toggleRow: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainer,
     borderRadius: borderRadius.sm, padding: spacing.md, marginBottom: spacing.sm, gap: spacing.sm,
   },
   toggleLabel: { fontSize: 14, fontWeight: '600', color: colors.text },
   toggleSub: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalScroll: { maxHeight: '90%' },
-  modalContent: { backgroundColor: colors.backgroundLight, borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: spacing.lg, paddingBottom: spacing.xxl },
+  modalContent: { backgroundColor: colors.surfaceContainer, borderTopLeftRadius: borderRadius.lg, borderTopRightRadius: borderRadius.lg, padding: spacing.lg, paddingBottom: spacing.xxl },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
   fieldLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.5, marginBottom: 5, marginTop: spacing.md, textTransform: 'uppercase' },
   modalInput: {
-    backgroundColor: colors.surface, borderRadius: borderRadius.sm, padding: spacing.md,
+    backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.sm, padding: spacing.md,
     color: colors.text, fontSize: 15, borderWidth: 1, borderColor: colors.border,
   },
   roleSelector: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
   roleSelectorItem: {
     flex: 1, paddingVertical: 10, borderRadius: borderRadius.sm,
-    backgroundColor: colors.surface, alignItems: 'center', borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surfaceContainer, alignItems: 'center', borderWidth: 1, borderColor: colors.border,
   },
   roleSelectorItemActive: { backgroundColor: colors.primary + '18', borderColor: colors.primary },
   roleSelectorText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
   modalActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
-  modalCancelBtn: { flex: 1, padding: spacing.md, borderRadius: borderRadius.sm, backgroundColor: colors.surface, alignItems: 'center' },
+  modalCancelBtn: { flex: 1, padding: spacing.md, borderRadius: borderRadius.sm, backgroundColor: colors.surfaceContainer, alignItems: 'center' },
   modalCancelText: { color: colors.textSecondary, fontWeight: '600', fontSize: 15 },
   modalSaveBtn: { flex: 1, padding: spacing.md, borderRadius: borderRadius.sm, backgroundColor: colors.primary, alignItems: 'center' },
   modalSaveText: { color: colors.text, fontWeight: '600', fontSize: 15 },
@@ -1298,8 +1298,8 @@ const styles = StyleSheet.create({
   permScreenName: { fontSize: 13, fontWeight: '600', color: colors.text, flex: 1 },
   permLevelRow: { flexDirection: 'row', gap: 3 },
   permLevelBtn: {
-    paddingHorizontal: 7, paddingVertical: 4, borderRadius: 5,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 7, paddingVertical: 4, borderRadius: borderRadius.small,
+    backgroundColor: colors.surfaceContainer, borderWidth: 1, borderColor: colors.border,
   },
   permLevelBtnActive: { backgroundColor: colors.primary + '20', borderColor: colors.primary },
   permLevelText: { fontSize: 10, color: colors.textSecondary, fontWeight: '500' },

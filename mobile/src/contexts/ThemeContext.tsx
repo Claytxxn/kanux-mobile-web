@@ -73,17 +73,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // Load persisted theme preference
   useEffect(() => {
+    let mounted = true;
     AsyncStorage.getItem(STORAGE_KEY).then((val) => {
+      if (!mounted) return;
       if (val === 'auto' || val === 'light' || val === 'dark') {
         setThemeModeState(val);
       }
     }).catch(() => {});
 
     AsyncStorage.getItem(LAST_MANUAL_STORAGE_KEY).then((val) => {
+      if (!mounted) return;
       if (val === 'light' || val === 'dark') {
         setLastManualMode(val);
       }
     }).catch(() => {});
+
+    return () => { mounted = false; };
   }, []);
 
   const loadWeather = useCallback(async () => {

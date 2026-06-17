@@ -26,7 +26,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.text,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: colors.background,
+          backgroundColor: colors.surfaceContainer,
           borderTopColor: colors.divider,
           borderTopWidth: 1,
           height: Platform.OS === 'ios' ? 60 + tabBottomInset : 54 + tabBottomInset,
@@ -39,7 +39,7 @@ export default function TabLayout() {
           marginTop: 0,
         },
         headerStyle: {
-          backgroundColor: colors.surface,
+          backgroundColor: colors.surfaceContainer,
           elevation: 0,
           shadowOpacity: 0,
           borderBottomWidth: 1,

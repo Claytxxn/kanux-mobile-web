@@ -1,13 +1,14 @@
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StatusBar,
+  Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../src/lib/supabase';
 import { api, initApi, setAuthToken } from '../../src/lib/api';
-import { colors, spacing, borderRadius, shadows } from '../../src/theme';
+import { colors, spacing, borderRadius } from '../../src/theme';
 import KanuxLogo from '../../src/components/KanuxLogo';
 
 export default function LoginScreen() {
@@ -24,6 +25,7 @@ export default function LoginScreen() {
   async function handleAuth() {
     if (!email || !password) { Alert.alert('Erro', 'Preencha todos os campos'); return; }
     if (!isSignUp && !companySlug) { Alert.alert('Erro', 'Informe o número da empresa'); return; }
+    
     setLoading(true);
     try {
       if (isSignUp) {
@@ -32,15 +34,46 @@ export default function LoginScreen() {
         Alert.alert('Sucesso', 'Conta criada! Verifique seu email.');
       } else {
         const result = await api.verifyCompany(companySlug.trim());
-        if (!result.success) { Alert.alert('Erro', result.error || 'Empresa não encontrada'); return; }
+        
+        if (!result.success) { 
+          Alert.alert('Erro', result.error || 'Empresa não encontrada'); 
+          return; 
+        }
+        
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        
         if (error) throw error;
+        
         if (data.session?.access_token) setAuthToken(data.session.access_token);
         router.replace('/(tabs)');
       }
     } catch (e: any) {
-      Alert.alert('Erro', e.message || 'Erro ao autenticar');
-    } finally { setLoading(false); }
+      console.error('[LoginScreen] Login error:', {
+        name: e?.name,
+        message: e?.message,
+        code: e?.code,
+        status: e?.status,
+        stack: e?.stack?.substring(0, 200)
+      });
+      
+      let errorMessage = 'Erro ao autenticar';
+      let errorTitle = 'Erro';
+      
+      // Tratamento específico para AbortError (timeout)
+      if (e?.name === 'AbortError') {
+        errorTitle = 'Tempo Esgotado';
+        errorMessage = 'O servidor está demorando para responder. Isso é normal quando o servidor fica inativo.\n\nTente novamente em 10-20 segundos.';
+      } else if (e?.message?.includes('Network request failed') || e?.message?.includes('fetch')) {
+        errorTitle = 'Erro de Conexão';
+        errorMessage = 'Verifique sua conexão com a internet e tente novamente.';
+      } else if (e?.message) {
+        errorMessage = e.message;
+      }
+      
+      Alert.alert(errorTitle, errorMessage);
+    } finally { 
+      setLoading(false); 
+    }
   }
 
   return (
@@ -110,15 +143,15 @@ const styles = StyleSheet.create({
   form:           { width: '100%' },
   inputContainer: { marginBottom: spacing.md },
   inputLabel:     { fontSize: 14, fontWeight: '500', color: colors.textSecondary, marginBottom: spacing.xs },
-  inputWrapper:   { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border },
+  inputWrapper:   { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border },
   inputIcon:      { paddingLeft: spacing.md },
   inputWithIcon:  { flex: 1, padding: spacing.md, color: colors.text, fontSize: 16 },
   eyeButton:      { padding: spacing.md },
-  button:         { backgroundColor: colors.primary, borderRadius: borderRadius.md, padding: spacing.md, alignItems: 'center', marginTop: spacing.lg, ...shadows.brand },
-  buttonDisabled: { opacity: 0.6 },
+  button:         { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, alignItems: 'center', justifyContent: 'center', marginTop: spacing.lg },
+  buttonDisabled: { opacity: 0.5 },
   buttonContent:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  buttonText:     { color: colors.text, fontSize: 18, fontWeight: '600' },
-  linkButton:     { marginTop: spacing.lg, alignItems: 'center', padding: spacing.sm },
+  buttonText:     { color: colors.text, fontSize: 16, fontWeight: '600' },
+  linkButton: { alignItems: 'center', padding: spacing.sm },
   linkText:       { color: colors.primary, fontSize: 15, fontWeight: '500' },
   footer:         { textAlign: 'center', color: colors.textMuted, fontSize: 12, marginTop: spacing.xxl },
 });

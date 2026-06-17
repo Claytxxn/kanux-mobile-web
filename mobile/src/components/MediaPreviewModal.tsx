@@ -1,6 +1,6 @@
 import { Alert, Image, Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing } from '../theme';
+import { colors, spacing, borderRadius } from '../theme';
 
 interface MediaPreviewModalProps {
   visible: boolean;
@@ -73,7 +73,7 @@ export function MediaPreviewModal({ visible, uri, type, name, onClose }: MediaPr
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.82)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     padding: spacing.lg,
   },
@@ -81,8 +81,8 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 18,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.border,

@@ -374,7 +374,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       setIsConnected(false);
       stompSubsRef.current.clear();
     }
-  }, [connect, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Cleanup ao desmontar
   useEffect(() => {

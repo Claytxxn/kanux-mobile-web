@@ -7,7 +7,7 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { api } from '../../src/lib/api';
 import { ENV } from '../../src/lib/env';
 import { supabase } from '../../src/lib/supabase';
-import { colors, spacing } from '../../src/theme';
+import { colors, spacing, borderRadius } from '../../src/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
 
 export default function ProfileScreen() {
@@ -142,7 +142,7 @@ export default function ProfileScreen() {
           )}
           <View style={styles.avatarEditBadge}>
             {uploadingPhoto ? (
-              <ActivityIndicator size={14} color={colors.text} />
+              <ActivityIndicator size={14} color={colors.primary} />
             ) : (
               <Ionicons name="camera" size={14} color={colors.text} />
             )}
@@ -371,52 +371,52 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md },
   header: { alignItems: 'center', paddingVertical: spacing.xl },
-  avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
+  avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.surfaceContainer, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
   avatarImage: { width: 80, height: 80, borderRadius: 40 },
   avatarWrapper: { position: 'relative' as const, marginBottom: spacing.md },
-  avatarEditBadge: { position: 'absolute' as const, bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.background },
+  avatarEditBadge: { position: 'absolute' as const, bottom: 0, right: 0, width: 28, height: 28, borderRadius: borderRadius.full, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.background },
   name: { fontSize: 24, fontWeight: 'bold', color: colors.text },
   email: { fontSize: 14, color: colors.textSecondary, marginTop: spacing.xs },
-  adminBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.warning, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 16, marginTop: spacing.sm, gap: spacing.xs },
+  adminBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.warning, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.lg, marginTop: spacing.sm, gap: spacing.xs },
   adminText: { fontSize: 12, color: colors.text, fontWeight: '600' },
   section: { marginBottom: spacing.lg },
   sectionTitle: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.sm, textTransform: 'uppercase' },
-  infoItem: { backgroundColor: colors.surface, borderRadius: 8, padding: spacing.md, marginBottom: spacing.sm },
+  infoItem: { backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.sm, padding: spacing.md, marginBottom: spacing.sm },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   infoContent: { flex: 1 },
   infoLabel: { fontSize: 12, color: colors.textSecondary },
   infoValue: { fontSize: 16, color: colors.text, fontWeight: '500' },
-  menuItem: { backgroundColor: colors.surface, borderRadius: 8, padding: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  menuItem: { backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.sm, padding: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  menuIcon: { width: 40, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  menuIcon: { width: 40, height: 40, borderRadius: borderRadius.sm, alignItems: 'center', justifyContent: 'center' },
   menuText: { fontSize: 16, color: colors.text },
-  signOutButton: { backgroundColor: colors.error, borderRadius: 8, padding: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.md, gap: spacing.sm },
+  signOutButton: { backgroundColor: colors.error, borderRadius: borderRadius.sm, padding: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.md, gap: spacing.sm },
   signOutText: { fontSize: 16, color: colors.text, fontWeight: '600' },
   version: { textAlign: 'center', color: colors.textMuted, fontSize: 12, marginTop: spacing.lg, marginBottom: spacing.xl },
   // Modal de edição
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: colors.backgroundLight, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: spacing.lg, paddingBottom: spacing.xl },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: colors.surfaceContainer, borderTopLeftRadius: borderRadius.lg, borderTopRightRadius: borderRadius.lg, padding: spacing.lg, paddingBottom: spacing.xl },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: spacing.lg },
   fieldLabel: { fontSize: 14, color: colors.textSecondary, marginBottom: spacing.xs },
-  modalInput: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md, color: colors.text, fontSize: 16, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md },
+  modalInput: { backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.md, padding: spacing.md, color: colors.text, fontSize: 16, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md },
   modalActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
-  modalCancelButton: { flex: 1, padding: spacing.md, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center' },
+  modalCancelButton: { flex: 1, padding: spacing.md, borderRadius: borderRadius.md, backgroundColor: colors.surfaceContainer, alignItems: 'center' },
   modalCancelText: { color: colors.textSecondary, fontWeight: '600', fontSize: 16 },
-  modalSaveButton: { flex: 1, padding: spacing.md, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center' },
+  modalSaveButton: { flex: 1, padding: spacing.md, borderRadius: borderRadius.md, backgroundColor: colors.primary, alignItems: 'center' },
   modalSaveText: { color: colors.text, fontWeight: '600', fontSize: 16 },
   // Tema / Aparência
   themeRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
   themeButton: {
-    flex: 1, backgroundColor: colors.surface, borderRadius: 12,
+    flex: 1, backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.md,
     padding: spacing.md, alignItems: 'center', gap: spacing.sm,
     borderWidth: 2, borderColor: 'transparent',
   },
   themeButtonActive: { borderColor: colors.primary },
-  themeCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  themeCircle: { width: 48, height: 48, borderRadius: borderRadius.full, alignItems: 'center', justifyContent: 'center' },
   themeLabel: { fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
   themeLabelActive: { color: colors.text, fontWeight: '700' },
   autoThemeRow: {
-    backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md,
+    backgroundColor: colors.surfaceContainer, borderRadius: borderRadius.md, padding: spacing.md,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   autoThemeInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },

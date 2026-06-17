@@ -3,11 +3,16 @@
     "name": "Kanux",
     "slug": "kanux-mobile",
     "version": "1.0.0.5",
+    "sdkVersion": "56.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "kanux",
     "userInterfaceStyle": "automatic",
-    // ...existing code...
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#09090B"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kanux.mobile",
@@ -56,8 +61,8 @@
         "projectId": "a8abab8f-4062-42df-9b42-0ad68186f26c"
       },
       "cli": {
-  "appVersionSource": "git-tag"
-}
+        "appVersionSource": "git-tag"
+      }
     }
   }
 }
