@@ -7,7 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "kanux",
     "userInterfaceStyle": "automatic",
-  
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kanux.mobile",
@@ -42,7 +41,8 @@
       "expo-sqlite",
       "expo-asset",
       "expo-secure-store",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
@@ -56,8 +56,8 @@
         "projectId": "a8abab8f-4062-42df-9b42-0ad68186f26c"
       },
       "cli": {
-  "appVersionSource": "git-tag"
-}
+        "appVersionSource": "git-tag"
+      }
     }
   }
 }
