@@ -6,6 +6,14 @@
     },
     "updates": {
       "url": "https://u.expo.dev/a8abab8f-4062-42df-9b42-0ad68186f26c"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "865e8a87-1cb7-41e5-845f-0fae200962b9"
+      }
+    },
+    "android": {
+      "package": "com.clarahzz.kanuxmobile"
     }
   }
 }
