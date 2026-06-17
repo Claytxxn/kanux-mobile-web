@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "kanux",
     "userInterfaceStyle": "automatic",
-    // ...existing code...
+  
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kanux.mobile",
