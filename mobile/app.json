@@ -7,6 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "kanux",
     "userInterfaceStyle": "automatic",
+
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -51,7 +52,12 @@
       ],
       "expo-sqlite",
       "expo-asset",
+
       "expo-secure-store"
+      "expo-secure-store",
+      "expo-status-bar",
+      "expo-font",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true
