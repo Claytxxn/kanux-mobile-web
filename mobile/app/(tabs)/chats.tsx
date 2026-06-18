@@ -6,7 +6,6 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { getUserCompanies, getCompanyChats, Chat, getDepartments, Department, Company } from '../../src/lib/supabase';
 import {
   initDatabase,
-  getCachedChats,
   saveChat,
   addPendingOperation
 } from '../../src/lib/offlineCache';

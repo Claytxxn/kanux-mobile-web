@@ -15,7 +15,14 @@ import { ENV } from '../../src/lib/env';
 import { getWorkingHoursRestrictionMessage } from '../../src/lib/workingHours';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { Audio } from 'expo-av';
+import {
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  AudioModule,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  RecordingPresets,
+} from 'expo-audio';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -68,7 +75,7 @@ export default function ChatScreen() {
   const listRef = useRef<FlatList>(null);
 
   // Áudio
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recording, setRecording] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const preparingRecordingRef = useRef(false);
 
@@ -422,13 +429,16 @@ export default function ChatScreen() {
 
     preparingRecordingRef.current = true;
     try {
-      const { granted } = await Audio.requestPermissionsAsync();
-      if (!granted) { Alert.alert('Permissão necessária', 'Habilite o acesso ao microfone.'); return; }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const { recording: rec } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      setRecording(rec);
+      const { granted } = await requestRecordingPermissionsAsync();
+      if (!granted) {
+        Alert.alert('Permissão necessária', 'Habilite o acesso ao microfone.');
+        return;
+      }
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      const recorder = new AudioModule.AudioRecorder(RecordingPresets.HIGH_QUALITY);
+      await recorder.prepareToRecordAsync(RecordingPresets.HIGH_QUALITY);
+      recorder.record();
+      setRecording(recorder);
       setIsRecording(true);
     } catch (e) {
       console.error('Erro ao iniciar gravação:', e);
@@ -444,9 +454,10 @@ export default function ChatScreen() {
     setIsRecording(false);
     setSending(true);
     try {
-      await recording.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-      const uri = recording.getURI();
+      await recording.stop();
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+      const uri = recording.uri;
+      recording.remove?.();
       setRecording(null);
       if (!uri) return;
       const fileName = `audio_${Date.now()}.m4a`;
@@ -744,38 +755,45 @@ export default function ChatScreen() {
 
 // ── Componente AudioPlayer inline ────────────────────────────────────────
 function AudioPlayer({ url, isMyMessage }: { url: string; isMyMessage: boolean }) {
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const player = useAudioPlayer(url, { downloadFirst: true });
+  const status = useAudioPlayerStatus(player);
   const [playing, setPlaying] = useState(false);
 
-  async function togglePlay() {
-    if (!playing) {
-      if (sound) {
-        await sound.replayAsync();
-      } else {
-        const { sound: s } = await Audio.Sound.createAsync(
-          { uri: url },
-          { shouldPlay: true }
-        );
-        s.setOnPlaybackStatusUpdate((status: any) => {
-          if (status.didJustFinish) { setPlaying(false); }
-        });
-        setSound(s);
-      }
-      setPlaying(true);
-    } else {
-      if (sound) await sound.pauseAsync();
+  useEffect(() => {
+    if (status.didJustFinish && playing) {
       setPlaying(false);
     }
-  }
+  }, [status.didJustFinish, playing]);
 
   useEffect(() => {
-    return () => { sound?.unloadAsync(); };
-  }, [sound]);
+    return () => {
+      try {
+        player.pause();
+        player.remove?.();
+      } catch (e) {
+        // ignore cleanup errors
+      }
+    };
+  }, [player]);
+
+  async function togglePlay() {
+    try {
+      if (!playing) {
+        player.play();
+        setPlaying(true);
+      } else {
+        player.pause();
+        setPlaying(false);
+      }
+    } catch (e) {
+      console.error('Erro ao tocar áudio:', e);
+    }
+  }
 
   return (
     <TouchableOpacity style={audioStyles.row} onPress={togglePlay}>
       <Ionicons name={playing ? 'pause-circle' : 'play-circle'} size={32} color={isMyMessage ? '#fff' : colors.primary} />
-      <Text style={[audioStyles.label, isMyMessage && { color: '#fff' }]}>
+      <Text style={[audioStyles.label, isMyMessage && { color: '#fff' }]}> 
         {playing ? 'Pausar' : 'Áudio'}
       </Text>
     </TouchableOpacity>
