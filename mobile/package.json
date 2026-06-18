@@ -20,7 +20,6 @@
     "date-fns": "^4.1.0",
     "expo": "^56.0.4",
     "expo-asset": "~56.0.14",
-    "expo-av": "~16.0.8",
     "expo-constants": "~56.0.15",
     "expo-document-picker": "~56.0.4",
     "expo-font": "~56.0.7",
